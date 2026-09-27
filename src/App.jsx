@@ -48,10 +48,9 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand-block">
-          <div className="brand-mark">E</div>
+          <div className="brand-mark">💗</div>
           <div>
-            <p className="eyebrow">Preparação</p>
-            <h1>Estudo Etec</h1>
+            <h1>ISTUDOS</h1>
           </div>
         </div>
 
@@ -78,7 +77,6 @@ function App() {
       <main className="main-panel">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Bom dia</p>
             <h2>Olá, {studentProfile.name}</h2>
           </div>
 

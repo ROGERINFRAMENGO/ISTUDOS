@@ -1,5 +1,5 @@
 export const studentProfile = {
-  name: 'Maria Clara',
+  name: 'Anna',
   streakDays: 12,
   maxStreak: 18,
   weeklyStudyDays: 5,
