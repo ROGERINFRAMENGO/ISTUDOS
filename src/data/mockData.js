@@ -94,6 +94,59 @@ export const subjects = [
   },
 ];
 
+export const studyPlan = [
+  {
+    id: 'portugues',
+    subject: 'Português',
+    color: '#9c5de5',
+    time: '09:00 - 09:35',
+    topic: 'Leitura e interpretação de texto',
+    objective: 'Identificar ideia central e inferências',
+    explanation: 'Vamos focar em como localizar a mensagem principal do texto, reconhecer pistas do autor e entender o contexto de cada parágrafo antes de responder as perguntas.',
+    videoUrl: 'https://www.youtube.com/results?search_query=interpreta%C3%A7%C3%A3o+de+texto+vestibulinho',
+  },
+  {
+    id: 'matematica',
+    subject: 'Matemática',
+    color: '#a377ff',
+    time: '10:00 - 10:45',
+    topic: 'Frações e números decimais',
+    objective: 'Transformar e comparar valores numéricos',
+    explanation: 'A aula de hoje vai mostrar como converter frações em decimais e resolver operações básicas com rapidez, algo que costuma aparecer em provas do vestibulinho.',
+    videoUrl: 'https://www.youtube.com/results?search_query=fra%C3%A7%C3%B5es+e+decimais+vestibulinho',
+  },
+  {
+    id: 'ciencias',
+    subject: 'Ciências',
+    color: '#8fd3a4',
+    time: '11:00 - 11:35',
+    topic: 'Fotossíntese e energia das plantas',
+    objective: 'Entender como a planta produz seu alimento',
+    explanation: 'Vamos revisar o papel da luz solar, da clorofila, da água e do gás carbônico no processo de produção de energia para a planta e para o ecossistema.',
+    videoUrl: 'https://www.youtube.com/results?search_query=fotossintese+vestibulinho',
+  },
+  {
+    id: 'historia',
+    subject: 'História',
+    color: '#e9a87a',
+    time: '13:30 - 14:10',
+    topic: 'Brasil Colonial e economia açucareira',
+    objective: 'Relacionar produção e sociedade no período colonial',
+    explanation: 'Hoje a aula vai conectar a produção de açúcar ao sistema de plantation, ao trabalho escravo e à base econômica do Brasil colonial.',
+    videoUrl: 'https://www.youtube.com/results?search_query=brasil+colonial+economia+a%C3%A7ucareira',
+  },
+  {
+    id: 'geografia',
+    subject: 'Geografia',
+    color: '#7ec8ff',
+    time: '14:30 - 15:05',
+    topic: 'Mapas, escalas e localização',
+    objective: 'Ler mapas e interpretar distâncias',
+    explanation: 'Vamos entender a ideia de escala, coordenadas geográficas e como a leitura correta do mapa ajuda a responder questões de localização e espaço.',
+    videoUrl: 'https://www.youtube.com/results?search_query=mapas+escala+geografia+vestibulinho',
+  },
+];
+
 export const missions = [
   { id: 'math-20', label: 'Estudar Matemática por 20 minutos', done: true },
   { id: 'five-questions', label: 'Resolver 5 questões', done: true },
