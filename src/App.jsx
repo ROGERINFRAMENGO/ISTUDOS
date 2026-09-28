@@ -940,6 +940,14 @@ function App() {
         onBackToLesson={() => { setLessonFlow('lesson'); setLessonView('lesson'); }}
         onSubmitQuiz={handleQuizSubmit}
         onFinish={finishLessonFlow}
+        studentState={studentState}
+        todayLessons={currentStudyPlan}
+        completedLessonIds={completedLessonIds}
+        onOpenSimulado={(id) => {
+          // Sai da lição e abre o simulado criado pelo chat, sem perder o dia.
+          handleBackToHome();
+          handleOpenSimulado(id);
+        }}
       />
     );
   }

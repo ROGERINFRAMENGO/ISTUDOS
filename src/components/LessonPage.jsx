@@ -1,10 +1,41 @@
-export const STUDY_CONFIRM_TEXT = '';
+import { useMemo, useState } from 'react';
+import TutorChat, { LESSON_SUGGESTIONS } from './TutorChat';
 
+export const STUDY_CONFIRM_TEXT = '';
 
 export default function LessonPage(props) {
   const { lesson, detail, quiz } = props;
   const isQuiz = props.lessonView === 'quiz';
   const isResults = props.lessonView === 'results' && props.quizResults;
+  // Chat de dúvidas dentro da lição (abre pelo botão flutuante).
+  const [chatOpen, setChatOpen] = useState(false);
+
+  // O que a IA precisa saber para responder dúvidas DESTA lição.
+  const lessonContext = useMemo(
+    () => ({
+      subject: lesson.subject,
+      topic: lesson.topic,
+      objective: lesson.objective,
+      explanation: lesson.explanation,
+      time: lesson.time,
+      stage: isQuiz
+        ? 'respondendo o questionario da aula'
+        : isResults
+          ? 'acabou de ver o resultado do questionario'
+          : 'lendo o conteudo e assistindo ao video',
+      sections: (detail?.sections || []).slice(0, 5).map((section) => ({
+        title: section.title,
+        bullets: (section.bullets || []).slice(0, 4),
+      })),
+      // Numera as questões ("Questão 1: ...") para a IA ligar quando o aluno
+      // disser "travei na questão 3".
+      quiz: (quiz || []).map((question, index) => ({
+        question: `Questão ${index + 1}: ${question.question}`,
+        options: question.options,
+      })),
+    }),
+    [lesson, detail, quiz, isQuiz, isResults]
+  );
 
   return (
     <div className="app-shell lesson-page-shell">
@@ -34,6 +65,27 @@ export default function LessonPage(props) {
           <ResultsContent {...props} />
         )}
       </main>
+
+      {/* Tutor IA dentro da lição: tira dúvidas sem sair da aula */}
+      {chatOpen ? (
+        <aside className="lesson-chat-drawer">
+          <TutorChat
+            title="Dúvida nesta aula"
+            className="lesson-chat-panel"
+            lessonContext={lessonContext}
+            suggestions={LESSON_SUGGESTIONS}
+            studentState={props.studentState}
+            todayLessons={props.todayLessons}
+            completedLessonIds={props.completedLessonIds}
+            onOpenSimulado={props.onOpenSimulado}
+            onClose={() => setChatOpen(false)}
+          />
+        </aside>
+      ) : (
+        <button type="button" className="lesson-chat-fab" onClick={() => setChatOpen(true)}>
+          💬 Tirar dúvida com a IA
+        </button>
+      )}
     </div>
   );
 }

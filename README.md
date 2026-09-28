@@ -26,6 +26,7 @@ Outros comandos: `npm run build` (gera `dist/`) · `npm run preview` (serve o bu
 - **Cronograma** — plano oficial 28/09 a 05/12 com status por dia
 - **Simulados e mini-provas** — crie provas (matéria, dificuldade, 2–30 questões) com banco de 36 questões estilo Etec; XP por acerto; histórico de melhor resultado
 - **Tutor IA** — chat com contexto do site (XP, sequência, aulas de hoje); **pede para ela criar simulados** ("cria um simulado de matemática com 10 questões")
+- **Tutor IA dentro da lição** — botão `💬 Tirar dúvida com a IA` abre o chat na aula, no questionário e no resultado; ela recebe o tema, o resumo, os tópicos e as questões daquela aula
 - **Sincronização celular ↔ computador** — mesmo XP, sequência, aulas, simulados e chat nos dois aparelhos, sem login (detalhes abaixo)
 - **7 temas de cor** (Configurações)
 
@@ -58,12 +59,15 @@ Lógica completa em [`src/services/sync.js`](src/services/sync.js).
 
 ## Tutor IA — Gemini (já conectada ✅)
 
-A Edge Function `ai-tutor` (v5) está implantada e **conectada ao Gemini** (API nativa do Google): tenta primeiro `gemini-3.8-flash` e, se der 429 (cota) ou 5xx, cai automaticamente para `gemini-flash-lite-latest` (cota separada).
+A Edge Function `ai-tutor` (v8) está implantada e **conectada ao Gemini** (API nativa do Google) com uma cascata de 4 modelos — `gemini-3.8-flash` → `gemini-3.6-flash` → `gemini-3.1-flash-lite` → `gemini-flash-lite-latest`. Se um modelo devolver 429 (cota) ou 503 (demanda), a função tenta o próximo em vez de mostrar erro; o último que funcionou passa a ser tentado primeiro.
 
 - A chave fica **só no servidor** (nunca no navegador nem no front-end)
 - O site envia o contexto (XP, sequência, aulas de hoje) junto de cada pergunta
-- **Se qualquer erro acontecer**, o chat mostra automaticamente a mensagem de desconexão combinada e o badge vira "○ IA desconectada"
+- **Dentro da lição**, envia também `context.lesson` (matéria, tema, objetivo, resumo, tópicos e as questões do questionário numeradas), então ela explica o conteúdo daquela aula passo a passo em vez de responder genérico
+- **Se qualquer erro acontecer**, o chat mostra automaticamente a mensagem de desconexão combinada e o badge vira "○ IA desconectada" (o site ainda tenta 1 vez sozinho antes, em erro de servidor/rede)
 - Ela também **cria simulados pelo chat** ("cria um simulado de matemática com 5 questões da semana 3") devolvendo uma ação estruturada
+
+O chat é o mesmo componente nas duas telas ([`src/components/TutorChat.jsx`](src/components/TutorChat.jsx)): a aba "Tutor IA" e o painel que abre dentro da lição compartilham o mesmo histórico e a mesma sincronização.
 
 Para trocar o modelo ou a chave, defina os segredos `AI_MODEL` / `AI_FALLBACK_MODEL` / `GEMINI_API_KEY` na função (Supabase Dashboard → Edge Functions → ai-tutor → Secrets). Opcionalmente você pode apontar outra URL com `VITE_AI_API_URL` no `.env`.
 
@@ -79,7 +83,7 @@ Para trocar o modelo ou a chave, defina os segredos `AI_MODEL` / `AI_FALLBACK_MO
 index.html            → entry do Vite
 src/
   App.jsx             → estado global (progresso, sequência, telas)
-  components/         → LessonPage, SchedulePage, AiChatPage, SimuladosPage
+  components/         → TutorChat (chat compartilhado), LessonPage, SchedulePage, AiChatPage, SimuladosPage
   data/               → lessons (aulas por data), schedule, simuladoBank, themes...
   services/           → auth, database, aiChat, simulados
   lib/supabase.js     → cliente Supabase
