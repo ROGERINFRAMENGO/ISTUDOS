@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BANK_SUBJECTS, DIFFICULTY_LABELS } from '../data/simuladoBank';
 import { buildSimulado, loadSimulados, saveSimulados } from '../services/simulados';
+import { isSyncConfigured, mergeSimulados, nowIso, pullShared, pushShared } from '../services/sync';
 import { scheduleWeeks } from '../data/schedule';
 import { getDateKey } from '../data/lessons';
 
@@ -38,6 +39,50 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
     setSimulados(next);
     saveSimulados(next);
   };
+
+  // ---------- Sincronização dos simulados entre celular e computador ----------
+  const [syncReady, setSyncReady] = useState(!isSyncConfigured);
+  const lastPushedRef = useRef('');
+
+  useEffect(() => {
+    if (!isSyncConfigured) return undefined;
+    let cancelled = false;
+
+    const boot = async () => {
+      const remote = await pullShared();
+      if (cancelled) {
+        return;
+      }
+      const remoteList = remote?.data?.simulados;
+      if (Array.isArray(remoteList) && remoteList.length) {
+        const local = loadSimulados();
+        const merged = mergeSimulados(local, remoteList);
+        if (JSON.stringify(merged) !== JSON.stringify(local)) persistNext(merged);
+      }
+      setSyncReady(true);
+    };
+
+    boot();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!isSyncConfigured || !syncReady) return undefined;
+    const serialized = JSON.stringify(simulados);
+    if (serialized === lastPushedRef.current) return undefined;
+
+    const timer = setTimeout(async () => {
+      await pushShared({ simulados }, { simulados: nowIso() });
+      lastPushedRef.current = serialized;
+    }, 1500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncReady, simulados]);
+
 
   const startSimulado = (sim) => {
     setActiveSim(sim);

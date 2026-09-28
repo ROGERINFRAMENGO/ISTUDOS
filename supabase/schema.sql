@@ -196,5 +196,38 @@ create policy "activity_feed_insert_own" on public.activity_feed for insert with
 create policy "activity_feed_delete_own" on public.activity_feed for delete using (auth.uid() = user_id);
 
 create index if not exists idx_study_days_user_date on public.study_days (user_id, study_date);
+
+-- ============================================================
+-- Sincronizacao entre aparelhos (celular <-> computador)
+-- ------------------------------------------------------------
+-- O site e de UM unico usuario, entao o estado compartilhado fica em
+-- UMA linha (id = 'principal') com o conteudo em jsonb. Nao precisa de
+-- login: o aparelho entra com a senha do app e o estado vem daqui.
+-- Secoes guardadas em data.sections:
+--   progress, completedLessonIds, studyDates, todayDone,
+--   simulados, chat, theme, resumeLesson
+-- data.meta guarda o horario da ultima gravacao de cada secao (merge).
+-- ============================================================
+create table if not exists public.app_state (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.app_state enable row level security;
+
+drop policy if exists "app_state_select_all" on public.app_state;
+drop policy if exists "app_state_insert_all" on public.app_state;
+drop policy if exists "app_state_update_all" on public.app_state;
+
+create policy "app_state_select_all" on public.app_state for select using (true);
+create policy "app_state_insert_all" on public.app_state for insert with check (true);
+create policy "app_state_update_all" on public.app_state for update using (true) with check (true);
+
+-- O app (chave publishable) precisa de select/insert/update. Delete fica
+-- de fora de proposito: a linha unica nunca e apagada pelo site.
+grant select, insert, update on public.app_state to anon, authenticated;
+
+
 create index if not exists idx_student_progress_user_id on public.student_progress (user_id);
 create index if not exists idx_activity_feed_user_id on public.activity_feed (user_id, created_at desc);

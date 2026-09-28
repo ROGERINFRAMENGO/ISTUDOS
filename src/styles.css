@@ -125,6 +125,33 @@ button {
   margin-top: 8px;
 }
 
+/* Sincronização entre celular e computador (rodapé da lateral) */
+.sync-badge {
+  display: block;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.sync-badge.sync-syncing {
+  color: var(--primary);
+}
+
+.sync-badge.sync-synced {
+  background: rgba(94, 183, 129, 0.14);
+  color: #2f7d56;
+}
+
+.sync-badge.sync-offline {
+  background: rgba(220, 38, 127, 0.08);
+  color: #b4235b;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);

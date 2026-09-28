@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { askTutor, AI_DISCONNECTED_MESSAGE, isAiConfigured } from '../services/aiChat';
 import { buildSimulado, loadSimulados, parseSimuladoIntent, saveSimulados } from '../services/simulados';
+import { isSyncConfigured, mergeChat, nowIso, pullShared, pushShared } from '../services/sync';
 import { subjects } from '../data/mockData';
 import { DAY_LABELS, formatDateBR, getDateKey, getDayKey } from '../data/lessons';
 
@@ -67,6 +68,52 @@ export default function AiChatPage({
   useEffect(() => {
     saveChat(messages);
   }, [messages]);
+
+  // ---------- Sincronização do chat entre celular e computador ----------
+  const [syncReady, setSyncReady] = useState(!isSyncConfigured);
+  const lastPushedRef = useRef('');
+
+  useEffect(() => {
+    if (!isSyncConfigured) return undefined;
+    let cancelled = false;
+
+    const boot = async () => {
+      const remote = await pullShared();
+      if (cancelled) {
+        return;
+      }
+      const remoteChat = remote?.data?.chat;
+      if (Array.isArray(remoteChat) && remoteChat.length) {
+        setMessages((prev) => mergeChat(prev, remoteChat));
+      }
+      setSyncReady(true);
+    };
+
+    boot();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!isSyncConfigured || !syncReady) return undefined;
+    const serialized = JSON.stringify(messages);
+    if (serialized === lastPushedRef.current) return undefined;
+
+    const timer = setTimeout(async () => {
+      const result = await pushShared({ chat: messages }, { chat: nowIso() });
+      lastPushedRef.current = serialized;
+      // Se a conversa do outro aparelho for mais nova, ela vence aqui também.
+      const remoteChat = result?.data?.chat;
+      if (Array.isArray(remoteChat) && remoteChat.length) {
+        setMessages((prev) => mergeChat(prev, remoteChat));
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncReady, messages]);
 
   useEffect(() => {
     const node = listRef.current;

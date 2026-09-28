@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   achievements,
   feed,
@@ -26,6 +26,16 @@ import {
   upsertStudyDay,
 } from './services/database';
 import { isSupabaseConfigured } from './lib/supabase';
+import {
+  isSyncConfigured,
+  loadLocalMeta,
+  mergeShared,
+  nowIso,
+  pickSections,
+  pullShared,
+  pushShared,
+  saveLocalMeta,
+} from './services/sync';
 import { getLessonDetail } from './data/lessonContent';
 import { getFullLessonQuiz } from './data/lessonQuiz';
 import { THEMES, applyTheme, loadTheme } from './data/themes';
@@ -251,6 +261,60 @@ function App() {
     applyTheme(themeName);
   }, [themeName]);
 
+  // ---------- Sincronização celular <-> computador ----------
+  // O site é de um único usuário: o estado compartilhado fica em uma linha da
+  // tabela public.app_state (regras de merge em src/services/sync.js).
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline
+  const [syncAt, setSyncAt] = useState(null);
+  const [syncReady, setSyncReady] = useState(!isSyncConfigured);
+  const syncMetaRef = useRef(loadLocalMeta());
+  const snapshotRef = useRef({});
+  const lastSnapshotRef = useRef({});
+  const lastPushedRef = useRef('');
+
+  // Seções que ESTA tela cuida (chat e simulados cuidam das deles).
+  const buildLocalSnapshot = () => ({
+    progress: studentState,
+    completedLessonIds,
+    studyDates,
+    todayDone: { date: todayDateKey, count: todayDoneCount },
+    theme: themeName,
+    resumeLesson: resumeLesson || null,
+  });
+
+  // Aplica no site o resultado do merge vindo do servidor.
+  const applySharedData = (data = {}) => {
+    if (data.progress) {
+      setStudentState((prev) => ({ ...prev, ...data.progress }));
+      saveLocalStudentProgress({ ...loadLocalStudentProgress(), ...data.progress });
+    }
+    if (Array.isArray(data.completedLessonIds)) setCompletedLessonIds(data.completedLessonIds);
+    if (Array.isArray(data.studyDates)) setStudyDates(data.studyDates);
+    if (data.todayDone && data.todayDone.date === todayDateKey) setTodayDoneCount(Number(data.todayDone.count) || 0);
+    if (data.theme && THEMES[data.theme]) setThemeName(data.theme);
+    if (data.resumeLesson !== undefined) {
+      setResumeLesson(data.resumeLesson || null);
+      if (typeof window !== 'undefined') {
+        if (data.resumeLesson) localStorage.setItem(RESUME_LESSON_KEY, JSON.stringify(data.resumeLesson));
+        else localStorage.removeItem(RESUME_LESSON_KEY);
+      }
+    }
+  };
+
+  // Junta o local com o servidor (usado ao abrir o site e no refresh periódico).
+  const mergeWithServer = (remote) =>
+    mergeShared({
+      local: Object.keys(snapshotRef.current).length ? snapshotRef.current : buildLocalSnapshot(),
+      localMeta: syncMetaRef.current,
+      remote: remote.data,
+      remoteMeta: remote.meta,
+    });
+
+  const markSynced = () => {
+    setSyncStatus('synced');
+    setSyncAt(Date.now());
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -337,6 +401,120 @@ function App() {
       data.subscription.unsubscribe();
     };
   }, []);
+
+  // Ao abrir o site: puxa o estado do servidor e junta com o deste aparelho.
+  useEffect(() => {
+    if (!isSyncConfigured) return undefined;
+    let cancelled = false;
+
+    const boot = async () => {
+      setSyncStatus('syncing');
+      const remote = await pullShared();
+      if (cancelled) return;
+
+      if (!remote) {
+        setSyncStatus('offline');
+        setSyncReady(true);
+        return;
+      }
+
+      const merged = mergeWithServer(remote);
+      applySharedData(merged.data);
+      syncMetaRef.current = { ...syncMetaRef.current, ...merged.meta };
+      saveLocalMeta(syncMetaRef.current);
+      snapshotRef.current = merged.data;
+      lastSnapshotRef.current = merged.data;
+      setSyncReady(true);
+      markSynced();
+    };
+
+    boot();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A cada mudança, envia para o servidor (com uma espera curta para não
+  // disparar dezenas de gravações enquanto a aula está rolando).
+  useEffect(() => {
+    if (!isSyncConfigured || !syncReady) return undefined;
+
+    const snapshot = buildLocalSnapshot();
+    snapshotRef.current = snapshot;
+    const sending = pickSections(snapshot);
+    const serialized = JSON.stringify(sending);
+
+    if (serialized === lastPushedRef.current) {
+      lastSnapshotRef.current = snapshot;
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      setSyncStatus('syncing');
+      const previous = lastSnapshotRef.current || {};
+      const stamp = nowIso();
+      const meta = {};
+      for (const key of Object.keys(sending)) {
+        // Só renova o horário das seções que realmente mudaram.
+        meta[key] =
+          JSON.stringify(previous[key]) === JSON.stringify(sending[key])
+            ? syncMetaRef.current[key] || stamp
+            : stamp;
+      }
+
+      const result = await pushShared(sending, meta);
+      lastSnapshotRef.current = snapshot;
+
+      if (!result) {
+        setSyncStatus('offline');
+        return;
+      }
+
+      lastPushedRef.current = serialized;
+      syncMetaRef.current = { ...syncMetaRef.current, ...meta };
+      saveLocalMeta(syncMetaRef.current);
+      markSynced();
+    }, 1200);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncReady, studentState, completedLessonIds, studyDates, todayDoneCount, themeName, resumeLesson]);
+
+  // De minuto em minuto (e ao voltar para a aba) busca novidades do outro aparelho.
+  useEffect(() => {
+    if (!isSyncConfigured || !syncReady) return undefined;
+
+    const refresh = async () => {
+      const remote = await pullShared();
+      if (!remote) {
+        setSyncStatus('offline');
+        return;
+      }
+
+      const merged = mergeWithServer(remote);
+      applySharedData(merged.data);
+      syncMetaRef.current = { ...syncMetaRef.current, ...merged.meta };
+      saveLocalMeta(syncMetaRef.current);
+      snapshotRef.current = { ...snapshotRef.current, ...merged.data };
+      markSynced();
+    };
+
+    const interval = setInterval(refresh, 60000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncReady]);
 
   const currentStudyPlan = todayLessons;
   const currentStudyLesson = selectedStudyLesson || currentStudyPlan[0] || null;
@@ -822,6 +1000,14 @@ function App() {
           <small>
             Nível {studentState.level} · {studentState.xp}/{levelProgress.total} XP
           </small>
+        </div>
+
+        <div className={`sync-badge sync-${syncStatus}`} title="Sincronização entre celular e computador">
+          {syncStatus === 'syncing' && '☁️ Sincronizando...'}
+          {syncStatus === 'synced' &&
+            `☁️ Sincronizado${syncAt ? ` às ${new Date(syncAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}`}
+          {syncStatus === 'offline' && '⚠️ Sem sincronizar agora'}
+          {syncStatus === 'idle' && '☁️ Sincronização ligada'}
         </div>
 
         <button className="ghost-button auth-logout" onClick={handleLogout}>Sair</button>
