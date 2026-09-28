@@ -9,6 +9,7 @@ export const EMPTY_PROGRESS = {
   questions_correct: 0,
   questions_wrong: 0,
   study_minutes: 0,
+  study_seconds: 0,
   lessons_completed: 0,
   modules_completed: 0,
   reviews_completed: 0,
@@ -78,7 +79,7 @@ export async function ensureStudentProfile(user) {
     .upsert(
       {
         id: user.id,
-        name: profileName,
+        full_name: profileName,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'id' }
@@ -188,7 +189,7 @@ export async function hydrateStudentState(userId) {
   const longestStreak = calculateLongestStreakFromStudyDates(studyDates);
 
   return {
-    name: profile.name || 'Estudante',
+    name: profile.full_name || profile.name || 'Estudante',
     xp: progress.xp || xpTotal || 0,
     level: progress.level || 1,
     current_streak: streak || progress.current_streak || 0,
@@ -197,6 +198,7 @@ export async function hydrateStudentState(userId) {
     questions_correct: progress.questions_correct || accuracySummary.correct || 0,
     questions_wrong: progress.questions_wrong || Math.max(0, (accuracySummary.total || 0) - (accuracySummary.correct || 0)),
     study_minutes: progress.study_minutes || 0,
+    study_seconds: progress.study_seconds || (progress.study_minutes || 0) * 60,
     lessons_completed: progress.lessons_completed || 0,
     modules_completed: progress.modules_completed || 0,
     reviews_completed: progress.reviews_completed || 0,
@@ -225,30 +227,123 @@ export async function upsertStudyDay(userId, studyDate = new Date().toISOString(
     .select();
 }
 
-export async function recordStudySession({ userId, subject, minutes, studyDate = new Date().toISOString() }) {
+export async function getCompletedLessonIds(userId) {
+  if (!supabase || !userId) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('lesson_progress')
+    .select('lesson_id')
+    .eq('user_id', userId)
+    .eq('completed', true);
+
+  if (error) {
+    console.error('Erro ao buscar aulas concluídas:', error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => row.lesson_id);
+}
+
+export async function countTotalLessons() {
+  try {
+    const mod = await import('../data/lessons');
+    const list = mod.lessons || [];
+    return Array.isArray(list) ? list.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function getStudyTotals(userId) {
+  if (!supabase || !userId) {
+    return { totalSeconds: 0, totalMinutes: 0, sessions: 0 };
+  }
+  const { data, error } = await supabase
+    .from('study_sessions')
+    .select('minutes,duration_seconds')
+    .eq('user_id', userId);
+  if (error) {
+    console.error('Erro ao somar tempo de estudo:', error.message);
+    return { totalSeconds: 0, totalMinutes: 0, sessions: 0 };
+  }
+  const rows = data || [];
+  const totalSeconds = rows.reduce((sum, r) => sum + Number(r.duration_seconds || (r.minutes || 0) * 60 || 0), 0);
+  return { totalSeconds, totalMinutes: Math.ceil(totalSeconds / 60), sessions: rows.length };
+}
+
+export async function recordStudySession({ userId, subject, lessonId, minutes, durationSeconds, startedAt, studyDate = new Date().toISOString() }) {
   if (!supabase || !userId) return { error: null };
 
-  await upsertStudyDay(userId, studyDate);
-
+  const normalizedDate = normalizeDateKey(studyDate);
+  const studyDates = await getStudyDates(userId);
   const currentProgress = await getStudentProgress(userId);
-  const nextMinutes = (currentProgress.study_minutes || 0) + Number(minutes || 0);
-  const nextXp = (currentProgress.xp || 0) + 15;
+
+  // Evita contar a mesma aula 2x no progresso / sequência.
+  let alreadyCompleted = false;
+  if (lessonId) {
+    const { data: existing } = await supabase
+      .from('lesson_progress')
+      .select('lesson_id')
+      .eq('user_id', userId)
+      .eq('lesson_id', lessonId)
+      .eq('completed', true)
+      .maybeSingle();
+    alreadyCompleted = Boolean(existing);
+  }
+
+  // Tempo REAL de permanência na lição (timer do Começar até o fim do quiz).
+  const realSeconds = alreadyCompleted ? 0 : Math.max(0, Math.round(Number(durationSeconds ?? (minutes || 0) * 60) || 0));
+  const realMinutes = alreadyCompleted ? 0 : Math.max(1, Math.ceil(realSeconds / 60));
+  const nextSeconds = (currentProgress.study_seconds || 0) + realSeconds;
+  const nextMinutes = (currentProgress.study_minutes || 0) + realMinutes;
+  const nextXp = (currentProgress.xp || 0) + (alreadyCompleted ? 0 : 15);
+
+  const nextStudyDates = [...new Set([...studyDates, normalizedDate])];
+  const currentStreak = calculateStreakFromStudyDates(nextStudyDates);
+  const longestStreak = calculateLongestStreakFromStudyDates(nextStudyDates);
+
+  await upsertStudyDay(userId, normalizedDate);
+
+  const lessonProgressUpsert = lessonId
+    ? supabase.from('lesson_progress').upsert(
+        {
+          user_id: userId,
+          lesson_id: lessonId,
+          completed: true,
+          completed_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,lesson_id' }
+      )
+    : null;
 
   const sessionInsert = await supabase.from('study_sessions').insert({
     user_id: userId,
     subject,
-    minutes: Number(minutes || 0),
+    minutes: realMinutes,
+    duration_seconds: realSeconds,
+    lesson_id: lessonId || null,
+    started_at: startedAt ? new Date(startedAt).toISOString() : new Date(studyDate).toISOString(),
     session_date: new Date(studyDate).toISOString(),
-  });
+  }).select().single();
 
   if (sessionInsert.error) {
-    return sessionInsert;
+    // Fallback para bancos antigos sem as novas colunas.
+    const legacy = await supabase.from('study_sessions').insert({
+      user_id: userId,
+      subject,
+      minutes: realMinutes,
+      session_date: new Date(studyDate).toISOString(),
+    }).select().single();
+    if (legacy.error) return legacy;
+    sessionInsert.data = legacy.data;
   }
 
   const xpInsert = await supabase.from('xp_events').insert({
     user_id: userId,
     event_type: 'study_session',
-    reference_id: `session-${Date.now()}`,
+    reference_id: `session-${sessionInsert.data?.id || Date.now()}`,
     xp: 15,
   });
 
@@ -256,17 +351,34 @@ export async function recordStudySession({ userId, subject, minutes, studyDate =
     return xpInsert;
   }
 
+  if (lessonProgressUpsert) {
+    const lessonUpsertResult = await lessonProgressUpsert;
+    if (lessonUpsertResult.error) {
+      return lessonUpsertResult;
+    }
+  }
+
+  const lessonsIncrement = lessonId && !alreadyCompleted ? 1 : 0;
+  const nextLessons = (currentProgress.lessons_completed || 0) + lessonsIncrement;
+  // Progresso geral = lições concluídas sobre total de lições cadastradas.
+  const totalLessons = await countTotalLessons();
+
   const upsert = await supabase.from('student_progress').upsert(
     {
       user_id: userId,
       xp: nextXp,
+      current_streak: currentStreak,
+      longest_streak: longestStreak,
       study_minutes: nextMinutes,
+      study_seconds: nextSeconds,
+      lessons_completed: nextLessons,
+      overall_progress: totalLessons > 0 ? Math.min(100, Math.round((nextLessons / totalLessons) * 100)) : Math.min(100, nextLessons * 5),
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'user_id' }
   ).select();
 
-  return upsert;
+  return { ...upsert, alreadyCompleted, realSeconds, realMinutes };
 }
 
 export async function recordQuestionAttempt({ userId, questionId, subject, topic, difficulty, correct, selectedAnswer }) {

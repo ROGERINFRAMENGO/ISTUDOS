@@ -2,9 +2,12 @@ create extension if not exists pgcrypto;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  name text not null default 'Estudante',
-  avatar_url text,
-  daily_goal_minutes integer not null default 20,
+  full_name text not null default 'Estudante',
+  xp integer not null default 0,
+  streak_days integer not null default 0,
+  study_minutes integer not null default 0,
+  accuracy_percent integer not null default 0,
+  general_progress integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -19,6 +22,7 @@ create table if not exists public.student_progress (
   questions_correct integer not null default 0,
   questions_wrong integer not null default 0,
   study_minutes integer not null default 0,
+  study_seconds integer not null default 0,
   lessons_completed integer not null default 0,
   modules_completed integer not null default 0,
   reviews_completed integer not null default 0,
@@ -32,6 +36,18 @@ create table if not exists public.study_days (
   study_date date not null,
   created_at timestamptz not null default now(),
   unique (user_id, study_date)
+);
+
+create table if not exists public.study_sessions (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  subject text not null default 'Estudo',
+  minutes integer not null default 0,
+  duration_seconds integer not null default 0,
+  lesson_id text,
+  started_at timestamptz,
+  session_date timestamptz not null default now(),
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.xp_events (
@@ -116,6 +132,7 @@ create table if not exists public.activity_feed (
 alter table public.profiles enable row level security;
 alter table public.student_progress enable row level security;
 alter table public.study_days enable row level security;
+alter table public.study_sessions enable row level security;
 alter table public.xp_events enable row level security;
 alter table public.question_attempts enable row level security;
 alter table public.lesson_progress enable row level security;
@@ -138,6 +155,10 @@ create policy "student_progress_delete_own" on public.student_progress for delet
 create policy "study_days_select_own" on public.study_days for select using (auth.uid() = user_id);
 create policy "study_days_insert_own" on public.study_days for insert with check (auth.uid() = user_id);
 create policy "study_days_delete_own" on public.study_days for delete using (auth.uid() = user_id);
+
+create policy "study_sessions_select_own" on public.study_sessions for select using (auth.uid() = user_id);
+create policy "study_sessions_insert_own" on public.study_sessions for insert with check (auth.uid() = user_id);
+create policy "study_sessions_delete_own" on public.study_sessions for delete using (auth.uid() = user_id);
 
 create policy "xp_events_select_own" on public.xp_events for select using (auth.uid() = user_id);
 create policy "xp_events_insert_own" on public.xp_events for insert with check (auth.uid() = user_id);
