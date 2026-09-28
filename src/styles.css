@@ -152,6 +152,23 @@ button {
   color: #b4235b;
 }
 
+/* No celular a lateral vai para o fim da pagina: mostra o indicador no topo. */
+.topbar-sync {
+  display: none;
+  margin-top: 0;
+}
+
+@media (max-width: 980px) {
+  .sidebar .sync-badge {
+    display: none;
+  }
+
+  .topbar-sync {
+    display: block;
+    order: -1;
+  }
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);

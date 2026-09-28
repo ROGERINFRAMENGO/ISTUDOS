@@ -910,6 +910,16 @@ function App() {
   const lessonHits = quizResults ? quizResults.filter((item) => item.isCorrect).length : 0;
   const showLessonPage = currentStudyLesson && lessonView !== 'home' && lessonFlow !== 'list';
 
+  // Texto do indicador de sincronização (usado na lateral e no topo).
+  const syncBadgeText =
+    syncStatus === 'syncing'
+      ? '☁️ Sincronizando...'
+      : syncStatus === 'offline'
+        ? '⚠️ Sem sincronizar agora'
+        : syncStatus === 'synced'
+          ? `☁️ Sincronizado${syncAt ? ` às ${new Date(syncAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}`
+          : '☁️ Sincronização ligada';
+
   if (showLessonPage) {
     return (
       <LessonPage
@@ -1003,11 +1013,7 @@ function App() {
         </div>
 
         <div className={`sync-badge sync-${syncStatus}`} title="Sincronização entre celular e computador">
-          {syncStatus === 'syncing' && '☁️ Sincronizando...'}
-          {syncStatus === 'synced' &&
-            `☁️ Sincronizado${syncAt ? ` às ${new Date(syncAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}`}
-          {syncStatus === 'offline' && '⚠️ Sem sincronizar agora'}
-          {syncStatus === 'idle' && '☁️ Sincronização ligada'}
+          {syncBadgeText}
         </div>
 
         <button className="ghost-button auth-logout" onClick={handleLogout}>Sair</button>
@@ -1020,6 +1026,9 @@ function App() {
           </div>
 
           <div className="topbar-actions">
+            <div className={`sync-badge topbar-sync sync-${syncStatus}`} title="Sincronização entre celular e computador">
+              {syncBadgeText}
+            </div>
             {showResume && (
               <button className="primary-button" onClick={handleResumeLesson}>
                 Voltar à lição: {resumeLesson.subject} — {resumeLesson.topic}
