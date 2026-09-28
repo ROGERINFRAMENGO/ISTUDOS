@@ -6,6 +6,7 @@
 // - load/save: persistência no localStorage (mesma filosofia do progresso)
 
 import { questionBank } from '../data/simuladoBank';
+import { getWeekQuestionIds } from '../data/weekQuestionMap';
 
 const SIMULADOS_KEY = 'istudos_simulados';
 
@@ -37,23 +38,35 @@ function shuffle(items) {
   return copy;
 }
 
-function defaultTitle(subject, difficulty) {
+function defaultTitle(subject, difficulty, week) {
   const subjectPart = !subject || subject === 'Todas' ? 'misto' : `de ${subject}`;
   const diffPart = difficulty && difficulty !== 'qualquer' ? ` (${difficulty})` : '';
+  if (week) return `Mini prova Semana ${week} — ${subjectPart}${diffPart}`;
   return `Mini prova ${subjectPart}${diffPart}`;
 }
 
-// Monta o simulado: filtra por matéria/dificuldade, embaralha e completa
-// até a quantidade pedida (se faltar no filtro, pega do resto do banco).
-export function buildSimulado({ title, subject, count = 10, difficulty = 'qualquer' } = {}) {
+// Monta o simulado. Se vier "week", prioriza as questões do conteúdo
+// daquela semana do cronograma (src/data/weekQuestionMap.js) e só
+// completa com revisão mista se faltar questão da semana.
+export function buildSimulado({ title, subject, count = 10, difficulty = 'qualquer', week } = {}) {
   const wanted = Math.min(Math.max(Number(count) || 10, 2), 30);
   const useSubject = subject && subject !== 'Todas' ? subject : null;
+  const weekNumber = Number(week) || null;
 
   const bySubject = useSubject ? questionBank.filter((q) => q.subject === useSubject) : [...questionBank];
   const byDifficulty =
     difficulty && difficulty !== 'qualquer' ? bySubject.filter((q) => q.difficulty === difficulty) : bySubject;
 
-  let picked = shuffle(byDifficulty);
+  // 1º lugar: conteúdo da semana que passe no filtro de matéria/dificuldade
+  const weekIds = weekNumber ? getWeekQuestionIds(weekNumber) : null;
+  const weekPool = weekIds ? questionBank.filter((q) => weekIds.includes(q.id) && byDifficulty.includes(q)) : [];
+  const startPool = weekPool.length ? weekPool : byDifficulty;
+
+  let picked = shuffle(startPool);
+  if (picked.length < wanted) {
+    const pickedIds = new Set(picked.map((q) => q.id));
+    picked = [...picked, ...shuffle(byDifficulty.filter((q) => !pickedIds.has(q.id)))];
+  }
   if (picked.length < wanted) {
     const pickedIds = new Set(picked.map((q) => q.id));
     picked = [...picked, ...shuffle(bySubject.filter((q) => !pickedIds.has(q.id)))];
@@ -66,9 +79,10 @@ export function buildSimulado({ title, subject, count = 10, difficulty = 'qualqu
 
   return {
     id: `sim-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    title: (title || '').trim() || defaultTitle(subject, difficulty),
+    title: (title || '').trim() || defaultTitle(subject, difficulty, weekNumber),
     subject: subject || 'Todas',
     difficulty: difficulty || 'qualquer',
+    week: weekNumber,
     createdAt: new Date().toISOString(),
     attempts: [],
     questions: picked,
@@ -109,5 +123,9 @@ export function parseSimuladoIntent(text = '') {
   else if (/dif[íi]cil|dif[íi]ceis|pesado/.test(t)) difficulty = 'dificil';
   else if (/m[ée]dio|m[ée]dia/.test(t)) difficulty = 'medio';
 
-  return { subject, count, difficulty, title: null };
+  // "semana 3", "da semana 2", "sem. 5" → conteúdo do cronograma daquela semana
+  const weekMatch = t.match(/\bsemana\s*(\d{1,2})\b/) || t.match(/\bsem\.?\s*(\d{1,2})\b/);
+  const week = weekMatch ? Math.min(10, Math.max(1, parseInt(weekMatch[1], 10))) : null;
+
+  return { subject, count, difficulty, week, title: null };
 }

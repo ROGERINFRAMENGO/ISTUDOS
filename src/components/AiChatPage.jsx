@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { askTutor, isAiConfigured } from '../services/aiChat';
+import { askTutor, AI_DISCONNECTED_MESSAGE, isAiConfigured } from '../services/aiChat';
 import { buildSimulado, loadSimulados, parseSimuladoIntent, saveSimulados } from '../services/simulados';
 import { subjects } from '../data/mockData';
 import { DAY_LABELS, formatDateBR, getDateKey, getDayKey } from '../data/lessons';
@@ -61,6 +61,7 @@ export default function AiChatPage({
   const [messages, setMessages] = useState(() => loadChat() || [welcomeMessage()]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+  const [aiOffline, setAiOffline] = useState(false);
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -125,7 +126,7 @@ export default function AiChatPage({
         ...nextMessages,
         {
           role: 'assistant',
-          content: `Criei o simulado "${sim.title}" com ${sim.questions.length} questão(ões) 💪\n\nMatéria: ${sim.subject} · Dificuldade: ${sim.difficulty === 'qualquer' ? 'qualquer' : sim.difficulty}.\n\nClique em "Abrir simulado" para começar agora!`,
+          content: `Criei o simulado "${sim.title}" com ${sim.questions.length} questão(ões) 💪\n\nMatéria: ${sim.subject} · Dificuldade: ${sim.difficulty === 'qualquer' ? 'qualquer' : sim.difficulty}${sim.week ? ` · Semana ${sim.week} (conteúdo do cronograma)` : ''}.\n\nClique em "Abrir simulado" para começar agora!`,
           action: { type: 'create_simulado', id: sim.id, title: sim.title },
           at: Date.now(),
         },
@@ -138,24 +139,28 @@ export default function AiChatPage({
 
     try {
       const reply = await askTutor({ messages: nextMessages, context });
+      let action = reply.action || null;
+      let content = reply.content;
+
+      // A IA pediu para criar um simulado → monta aqui e vira botão no chat.
+      if (action?.type === 'create_simulado') {
+        const sim = buildSimulado(action.params || {});
+        saveSimulados([sim, ...loadSimulados()]);
+        action = { type: 'create_simulado', id: sim.id, title: sim.title };
+        content = `${content}\n\n✅ Simulado "${sim.title}" criado com ${sim.questions.length} questões${sim.week ? ` (Semana ${sim.week})` : ''} — clique em "Abrir simulado".`;
+      }
+
+      setAiOffline(Boolean(reply.disconnected));
       setMessages((prev) => [
         ...prev,
-        {
-          role: 'assistant',
-          content: reply.content,
-          action: reply.action || null,
-          at: Date.now(),
-        },
+        { role: 'assistant', content, action, disconnected: Boolean(reply.disconnected), at: Date.now() },
       ]);
-    } catch (error) {
+    } catch {
+      // Erro inesperado fora do serviço → mesma mensagem de desconexão.
+      setAiOffline(true);
       setMessages((prev) => [
         ...prev,
-        {
-          role: 'assistant',
-          content: `${error?.message || 'Não consegui responder agora.'} Tente de novo em instantes.`,
-          error: true,
-          at: Date.now(),
-        },
+        { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() },
       ]);
     } finally {
       setIsThinking(false);
@@ -170,8 +175,8 @@ export default function AiChatPage({
     <section className="panel chat-panel">
       <div className="panel-head">
         <h3>Tutor IA</h3>
-        <span className={`tag ${isAiConfigured ? 'tag-hot' : ''}`}>
-          {isAiConfigured ? '● IA conectada' : '○ Modo demonstração'}
+        <span className={`tag ${isAiConfigured && !aiOffline ? 'tag-hot' : ''}`}>
+          {!isAiConfigured ? '○ Modo demonstração' : aiOffline ? '○ IA desconectada' : '● IA conectada'}
         </span>
       </div>
 

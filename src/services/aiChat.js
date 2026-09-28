@@ -8,9 +8,15 @@
 // 3. Enquanto a URL estiver vazia, o chat roda em modo demonstração com
 //    respostas locais que já usam o contexto do site (XP, sequência, aulas de hoje).
 
-const AI_API_URL = import.meta.env.VITE_AI_API_URL || '';
+const AI_API_URL =
+  import.meta.env.VITE_AI_API_URL ||
+  'https://ehuwpvgcmssxrafsmtfo.supabase.co/functions/v1/ai-tutor';
 
 export const isAiConfigured = Boolean(AI_API_URL);
+
+// Mensagem exata exibida QUANDO A IA ESTIVER DESCONECTADA (erro de qualquer tipo).
+export const AI_DISCONNECTED_MESSAGE =
+  'meu amor essa mensagem e automatica quando a ia deu algum problema mim avisa no coisa meu amor srsrsrsrsrsr';
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,54 +77,57 @@ async function localTutorReply(messages = [], context = {}) {
 // context:  dados do site (aluno, aulas de hoje, matérias) para a IA "entender" o usuário.
 export async function askTutor({ messages = [], context = {} } = {}) {
   if (!isAiConfigured) {
-    return { content: await localTutorReply(messages, context), action: null };
+    return { content: await localTutorReply(messages, context), action: null, disconnected: false };
   }
 
-  let response;
   try {
-    response = await fetch(AI_API_URL, {
+    const response = await fetch(AI_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, context }),
     });
-  } catch {
-    throw new Error('Não consegui me conectar ao Tutor IA.');
-  }
 
-  if (!response.ok) {
-    throw new Error(`O Tutor IA respondeu com erro ${response.status}.`);
-  }
-
-  const data = await response.json().catch(() => ({}));
-
-  // Aceita os formatos mais comuns de resposta de APIs de chat.
-  const raw =
-    data.reply ||
-    data.message ||
-    data.content ||
-    data?.choices?.[0]?.message?.content ||
-    '';
-
-  if (!raw) {
-    throw new Error('O Tutor IA voltou sem resposta.');
-  }
-
-  // A IA pode responder texto puro OU um JSON com ação estruturada:
-  // { "reply": "...", "action": { "type": "create_simulado", "params": {...} } }
-  const trimmed = String(raw).trim();
-  if (trimmed.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed && (parsed.reply || parsed.message)) {
-        return {
-          content: parsed.reply || parsed.message,
-          action: parsed.action || null,
-        };
-      }
-    } catch {
-      // não era JSON — segue como texto normal
+    if (!response.ok) {
+      throw new Error(`Tutor IA respondeu com erro ${response.status}.`);
     }
-  }
 
-  return { content: trimmed, action: null };
+    const data = await response.json().catch(() => ({}));
+
+    // Aceita os formatos mais comuns de resposta de APIs de chat.
+    const raw =
+      data.reply ||
+      data.message ||
+      data.content ||
+      data?.choices?.[0]?.message?.content ||
+      '';
+
+    if (!raw) {
+      throw new Error('Tutor IA voltou sem resposta.');
+    }
+
+    // A IA pode responder texto puro OU um JSON com ação estruturada:
+    // { "reply": "...", "action": { "type": "create_simulado", "params": {...} } }
+    const trimmed = String(raw).trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && (parsed.reply || parsed.message)) {
+          return {
+            content: parsed.reply || parsed.message,
+            action: parsed.action || null,
+            disconnected: false,
+          };
+        }
+      } catch {
+        // não era JSON — segue como texto normal
+      }
+    }
+
+    return { content: trimmed, action: null, disconnected: false };
+  } catch (error) {
+    // QUALQUER erro (rede, 4xx/5xx, resposta vazia) = IA desconectada
+    // → mensagem combinada com o usuário, sem quebrar o chat.
+    console.error('Tutor IA desconectada:', error);
+    return { content: AI_DISCONNECTED_MESSAGE, action: null, disconnected: true };
+  }
 }

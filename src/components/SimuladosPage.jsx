@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { BANK_SUBJECTS, DIFFICULTY_LABELS } from '../data/simuladoBank';
 import { buildSimulado, loadSimulados, saveSimulados } from '../services/simulados';
+import { scheduleWeeks } from '../data/schedule';
+import { getDateKey } from '../data/lessons';
 
 function bestPercent(sim) {
   const attempts = sim?.attempts || [];
@@ -19,7 +21,18 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [results, setResults] = useState(null);
-  const [form, setForm] = useState({ title: '', subject: 'Todas', count: 10, difficulty: 'qualquer' });
+  const [form, setForm] = useState(() => {
+    // Pré-seleciona a semana do cronograma em que o usuário está hoje.
+    const todayKey = getDateKey(new Date());
+    const currentWeekIndex = scheduleWeeks.findIndex((week) => week.days.some((day) => day.key === todayKey));
+    return {
+      title: '',
+      subject: 'Todas',
+      count: 10,
+      difficulty: 'qualquer',
+      week: currentWeekIndex >= 0 ? String(currentWeekIndex + 1) : '',
+    };
+  });
 
   const persistNext = (next) => {
     setSimulados(next);
@@ -204,6 +217,17 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
 
       <form className="sim-create" onSubmit={handleCreate}>
         <label>
+          Semana do cronograma
+          <select value={form.week} onChange={(e) => setForm((p) => ({ ...p, week: e.target.value }))}>
+            <option value="">Misto (qualquer semana)</option>
+            {scheduleWeeks.map((week, index) => (
+              <option key={week.id} value={index + 1}>
+                {week.title} · {week.range}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           Matéria
           <select value={form.subject} onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}>
             <option value="Todas">Misto (todas)</option>
@@ -243,6 +267,20 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
         <button type="submit" className="primary-button">Criar simulado</button>
       </form>
 
+      {form.week && (
+        <div className="sim-week-info">
+          <strong>Conteúdo da {scheduleWeeks[Number(form.week) - 1]?.title} — o que pode cair:</strong>
+          <p>{scheduleWeeks[Number(form.week) - 1]?.goal}</p>
+          <ul>
+            {(scheduleWeeks[Number(form.week) - 1]?.days || []).map((day) => (
+              <li key={day.key}>
+                <b>{day.weekday}</b> — {day.content}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {simulados.length === 0 ? (
         <p className="quiz-error">Nenhum simulado ainda. Crie o primeiro acima ou peça para a Tutora IA!</p>
       ) : (
@@ -256,6 +294,7 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
                   <span className="tag">{sim.questions.length} questões</span>
                 </div>
                 <p className="sim-meta">
+                  {sim.week ? `Semana ${sim.week} · ` : ''}
                   {sim.subject} · {DIFFICULTY_LABELS[sim.difficulty] || 'Qualquer'} ·{' '}
                   {new Date(sim.createdAt).toLocaleDateString('pt-BR')}
                   {(sim.attempts || []).length > 0 ? ` · ${sim.attempts.length} tentativa(s)` : ''}

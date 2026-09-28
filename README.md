@@ -42,22 +42,16 @@ Sem `.env` o app funciona: Supabase cai no fallback do código e a IA fica em mo
 
 Rode o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) no **SQL Editor** do Supabase. São 12 tabelas com RLS (cada usuário só enxerga os próprios dados).
 
-## Tutor IA — como conectar de verdade
+## Tutor IA — Gemini (já conectada ✅)
 
-A Edge Function **`ai-tutor` já está implantada** no projeto Supabase. Falta só:
+A Edge Function `ai-tutor` está implantada e **conectada ao Gemini** (`gemini-3.8-flash`, API nativa do Google):
 
-```bash
-# 1. Guardar a chave da IA como segredo do servidor (nunca no navegador)
-supabase secrets set OPENAI_API_KEY=sk-...
+- A chave fica **só no servidor** (nunca no navegador nem no repositório)
+- O site envia o contexto (XP, sequência, aulas de hoje) junto de cada pergunta
+- **Se qualquer erro acontecer**, o chat mostra automaticamente a mensagem de desconexão combinada e o badge vira "○ IA desconectada"
+- Ela também **cria simulados pelo chat** ("cria um simulado de matemática com 5 questões da semana 3") devolvendo uma ação estruturada
 
-# 2. Apontar o site para a função (no .env)
-VITE_AI_API_URL=https://ehuwpvgcmssxrafsmtfo.supabase.co/functions/v1/ai-tutor
-
-# 3. Reconstruir
-npm run build
-```
-
-O badge do chat vira **● IA conectada**. Ela recebe o contexto do site (XP, sequência, aulas de hoje) e pode devolver **ações estruturadas** — por enquanto `create_simulado`, que abre um botão "Abrir simulado" no chat.
+Para trocar o modelo ou a chave, defina os segredos `AI_MODEL` / `GEMINI_API_KEY` na função (Supabase Dashboard → Edge Functions → ai-tutor → Secrets). Opcionalmente você pode apontar outra URL com `VITE_AI_API_URL` no `.env`.
 
 ## Deploy (GitHub Pages)
 

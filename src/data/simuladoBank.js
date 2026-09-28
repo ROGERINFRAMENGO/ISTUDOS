@@ -160,6 +160,11 @@ export const questionBank = [
     question: 'Desenvolvimento sustentável significa:',
     options: ['Crescer sem se preocupar com o futuro', 'Atender a geração atual sem comprometer as futuras', 'Parar toda a produção industrial', 'Substituir completamente a tecnologia'], correct: 1,
     explanation: 'Satisfazer as necessidades presentes sem comprometer as gerações futuras.' },
+  // ---------------- extra: fotossíntese (semana 6) ----------------
+  { id: 'cie-q7', subject: 'Ciências', topic: 'Biologia — Fotossíntese', difficulty: 'facil',
+    question: 'Qual gás as plantas captam do ar para fazer fotossíntese?',
+    options: ['Gás oxigênio', 'Gás carbônico', 'Gás hidrogênio', 'Nitrogênio'], correct: 1,
+    explanation: 'A planta capta gás carbônico (CO₂) e água; com a luz solar produz glicose e libera oxigênio.' },
 ];
 
 export const BANK_SUBJECTS = [...new Set(questionBank.map((q) => q.subject))];

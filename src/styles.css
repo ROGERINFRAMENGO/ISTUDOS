@@ -1162,6 +1162,36 @@ h1, h2, h3, h4, p {
 
 .chat-input:focus {
 
+/* ====================== Semana do cronograma (simulados) ====================== */
+.sim-week-info {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 12px;
+  background: var(--primary-soft);
+}
+
+.sim-week-info strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.sim-week-info p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.sim-week-info ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.84rem;
+}
+
+
 /* ============================ Simulados ============================ */
 .simulados-panel {
   display: flex;
