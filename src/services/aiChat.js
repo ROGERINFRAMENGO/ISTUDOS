@@ -72,6 +72,24 @@ async function localTutorReply(messages = [], context = {}) {
   return `Estou em modo demonstração — minha resposta ainda não vem de um modelo de IA de verdade. 😅\n\nPara me "ligar", configure VITE_AI_API_URL apontando para uma Edge Function do Supabase (o código de integração já está pronto neste arquivo).\n\nEnquanto isso, posso falar sobre seu site: pergunte "o que eu estudo hoje?", "como está minha sequência?" ou "quanto XP eu tenho?".`;
 }
 
+// Uma chamada à Edge Function. Erro HTTP sai com .status para o
+// chamador decidir se vale a pena tentar de novo.
+async function requestTutor(messages, context) {
+  const response = await fetch(AI_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, context }),
+  });
+
+  if (!response.ok) {
+    const error = new Error(`Tutor IA respondeu com erro ${response.status}.`);
+    error.status = response.status;
+    throw error;
+  }
+
+  return response.json().catch(() => ({}));
+}
+
 // Ponto único de entrada usado pela página do chat.
 // messages: [{ role: 'user' | 'assistant', content: string }]
 // context:  dados do site (aluno, aulas de hoje, matérias) para a IA "entender" o usuário.
@@ -81,17 +99,19 @@ export async function askTutor({ messages = [], context = {} } = {}) {
   }
 
   try {
-    const response = await fetch(AI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, context }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Tutor IA respondeu com erro ${response.status}.`);
+    let data;
+    try {
+      data = await requestTutor(messages, context);
+    } catch (error) {
+      // 5xx (pico de demanda / cota por minuto do modelo) e falha de rede são
+      // passageiros: uma segunda tentativa costuma resolver. Erro 4xx é do
+      // pedido em si e não vale repetir.
+      const transient = !error?.status || error.status >= 500;
+      if (!transient) throw error;
+      console.warn('Tutor IA: primeira tentativa falhou, tentando de novo...', error);
+      await wait(1200);
+      data = await requestTutor(messages, context);
     }
-
-    const data = await response.json().catch(() => ({}));
 
     // Aceita os formatos mais comuns de resposta de APIs de chat.
     const raw =

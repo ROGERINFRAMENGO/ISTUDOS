@@ -44,14 +44,14 @@ Rode o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) no **SQL Editor
 
 ## Tutor IA — Gemini (já conectada ✅)
 
-A Edge Function `ai-tutor` está implantada e **conectada ao Gemini** (`gemini-3.8-flash`, API nativa do Google):
+A Edge Function `ai-tutor` (v5) está implantada e **conectada ao Gemini** (API nativa do Google): tenta primeiro `gemini-3.8-flash` e, se der 429 (cota) ou 5xx, cai automaticamente para `gemini-flash-lite-latest` (cota separada).
 
-- A chave fica **só no servidor** (nunca no navegador nem no repositório)
+- A chave fica **só no servidor** (nunca no navegador nem no front-end)
 - O site envia o contexto (XP, sequência, aulas de hoje) junto de cada pergunta
 - **Se qualquer erro acontecer**, o chat mostra automaticamente a mensagem de desconexão combinada e o badge vira "○ IA desconectada"
 - Ela também **cria simulados pelo chat** ("cria um simulado de matemática com 5 questões da semana 3") devolvendo uma ação estruturada
 
-Para trocar o modelo ou a chave, defina os segredos `AI_MODEL` / `GEMINI_API_KEY` na função (Supabase Dashboard → Edge Functions → ai-tutor → Secrets). Opcionalmente você pode apontar outra URL com `VITE_AI_API_URL` no `.env`.
+Para trocar o modelo ou a chave, defina os segredos `AI_MODEL` / `AI_FALLBACK_MODEL` / `GEMINI_API_KEY` na função (Supabase Dashboard → Edge Functions → ai-tutor → Secrets). Opcionalmente você pode apontar outra URL com `VITE_AI_API_URL` no `.env`.
 
 ## Deploy (GitHub Pages)
 
