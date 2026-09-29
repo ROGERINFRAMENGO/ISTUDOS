@@ -1,18 +1,18 @@
 // ============================================================
 // Serviço do Tutor IA — camada única de conversação com a IA
 // ============================================================
-// COMO LIGAR A IA DE VERDADE (passo a passo na resposta/README):
-// 1. Crie uma Edge Function no Supabase (ex.: "ai-tutor") que chama o modelo
-//    com a chave da API GUARDADA NO SERVIDOR (nunca no navegador).
-// 2. Declare no .env:  VITE_AI_API_URL=https://<ref>.supabase.co/functions/v1/ai-tutor
-// 3. Enquanto a URL estiver vazia, o chat roda em modo demonstração com
-//    respostas locais que já usam o contexto do site (XP, sequência, aulas de hoje).
+// A conversa passa pela Edge Function "tutor" do Supabase (ver
+// supabase/functions/tutor). O navegador NUNCA recebe a chave da
+// NVIDIA: quem fala com o modelo é a função, usando o secret dela.
+// A sessão (login anônimo) é garantida por src/services/ai.js.
+//
+// Enquanto a função não estiver deployada (ou o login anônimo
+// desativado), o chat continua funcionando: cai na mensagem de
+// IA desconectada ou no modo demonstração local.
 
-const AI_API_URL =
-  import.meta.env.VITE_AI_API_URL ||
-  'https://ehuwpvgcmssxrafsmtfo.supabase.co/functions/v1/ai-tutor';
+import { callTutor } from './ai';
 
-export const isAiConfigured = Boolean(AI_API_URL);
+export const isAiConfigured = true;
 
 // Mensagem exata exibida QUANDO A IA ESTIVER DESCONECTADA (erro de qualquer tipo).
 export const AI_DISCONNECTED_MESSAGE =
@@ -72,22 +72,15 @@ async function localTutorReply(messages = [], context = {}) {
   return `Estou em modo demonstração — minha resposta ainda não vem de um modelo de IA de verdade. 😅\n\nPara me "ligar", configure VITE_AI_API_URL apontando para uma Edge Function do Supabase (o código de integração já está pronto neste arquivo).\n\nEnquanto isso, posso falar sobre seu site: pergunte "o que eu estudo hoje?", "como está minha sequência?" ou "quanto XP eu tenho?".`;
 }
 
-// Uma chamada à Edge Function. Erro HTTP sai com .status para o
-// chamador decidir se vale a pena tentar de novo.
+// Uma chamada à Edge Function "tutor" (com o JWT da sessão).
 async function requestTutor(messages, context) {
-  const response = await fetch(AI_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, context }),
-  });
-
-  if (!response.ok) {
-    const error = new Error(`Tutor IA respondeu com erro ${response.status}.`);
-    error.status = response.status;
+  const data = await callTutor({ messages, context });
+  if (!data || (!data.reply && !data.content && !data.message)) {
+    const error = new Error('Tutor IA voltou sem resposta.');
+    error.status = 502;
     throw error;
   }
-
-  return response.json().catch(() => ({}));
+  return data;
 }
 
 // Ponto único de entrada usado pela página do chat.

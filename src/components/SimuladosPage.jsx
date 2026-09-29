@@ -319,7 +319,7 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
           <ul>
             {(scheduleWeeks[Number(form.week) - 1]?.days || []).map((day) => (
               <li key={day.key}>
-                <b>{day.weekday}</b> — {day.content}
+                <b>{day.weekday}</b> — {day.blocks.map((b) => `${b.subject}: ${b.subtopics.join('; ')}`).join('  |  ')}
               </li>
             ))}
           </ul>

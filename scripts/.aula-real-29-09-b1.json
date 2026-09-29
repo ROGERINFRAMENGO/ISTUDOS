@@ -1,0 +1,83 @@
+{
+  "lesson": {
+    "title": "Informação explícita e implícita: compreensão e interpretação",
+    "topic": "informação explícita",
+    "subject": "Português",
+    "summary": [
+      "Informação explícita está escrita diretamente no texto e pode ser localizada.",
+      "Informação implícita precisa ser inferida a partir de pistas do texto.",
+      "Compreensão é entender o que o texto diz, interpretação é concluir a partir dele.",
+      "Na prova, justifique a alternativa certa e explique por que as outras estão erradas."
+    ],
+    "sections": [
+      {
+        "title": "Informação explícita",
+        "examples": [
+          {
+            "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é das 8h às 12h. Qual é o horário de funcionamento na sexta-feira?",
+            "solution": "O horário na sexta-feira é das 7h às 18h.\nA informação está escrita: funciona de segunda a sexta, das 7h às 18h.",
+            "explanation": "A resposta está explícita. A frase diz que de segunda a sexta o horário é das 7h às 18h. Sexta está dentro desse intervalo, então a resposta é direta do texto."
+          }
+        ],
+        "explanation": "Informação explícita é a informação que o autor deixa clara no texto, sem precisar adivinhar. Ela está escrita com palavras diretas e pode ser localizada copiando do texto. Para achar, faça a pergunta: o texto fala isso exatamente? Se sim, é explícita. Exemplo de marca: datas, nomes, números, definições diretas. Não confunda com opinião. Na prova, a alternativa correta de explícita costuma usar as mesmas palavras do texto. Treine sublinhar a parte que responde a pergunta. Isso evita inventar dados que não existem."
+      },
+      {
+        "title": "Informação implícita",
+        "examples": [
+          {
+            "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é das 8h às 12h. O que se pode inferir sobre o domingo?",
+            "solution": "É implícito que a biblioteca não funciona no domingo.\nO texto cita segunda a sábado com horários e não menciona domingo.",
+            "explanation": "A informação não está escrita, mas a ausência de domingo na lista de funcionamento permite inferir que não há atendimento. É uma conclusão lógica baseada no que foi dito."
+          }
+        ],
+        "explanation": "Informação implícita não está escrita diretamente, mas pode ser inferida a partir de pistas do texto. Inferir significa concluir usando lógica e contexto. O texto dá indícios e você junta as peças. Por exemplo, se o texto diz que a rua estava vazia e silenciosa às 15h em dia de semana, é implícito que provavelmente as pessoas estão no trabalho ou na escola. Cuidado: inferência precisa ter base no texto, não é opinião pessoal. Na prova, a alternativa correta de implícita é plausível e sustentada, enquanto as erradas inventam ou contradizem o texto."
+      },
+      {
+        "title": "Compreensão e interpretação",
+        "examples": [
+          {
+            "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é das 8h às 12h. Qual alternativa interpreta corretamente a intenção do horário reduzido no sábado?",
+            "solution": "A intenção é oferecer atendimento limitado aos finais de semana.\nO horário menor no sábado sugere serviço reduzido comparado à semana.",
+            "explanation": "Compreensão: o horário no sábado é menor. Interpretação: isso indica atendimento limitado. A alternativa correta relaciona os dois dados sem inventar motivo externo."
+          }
+        ],
+        "explanation": "Compreensão é entender o sentido literal do texto, o que ele diz de forma explícita ou implícita. Interpretação é ir além, relacionar ideias, perceber intenção, causa e consequência. Primeiro compreenda, depois interprete. Na hora de marcar alternativa, verifique se ela repete o texto sem distorcer para compreensão explícita, e se ela é uma conclusão sustentada para interpretação implícita. Explique por que as alternativas erradas estão erradas: uma pode acrescentar informação que não existe, outra pode contradizer o texto, outra pode ser verdadeira no mundo real mas não no texto."
+      }
+    ],
+    "objectives": [
+      "Identificar informação explícita em um texto curto.",
+      "Distinguir informação implícita da explícita e reconhecer inferências.",
+      "Aplicar compreensão e interpretação para responder questões de prova."
+    ],
+    "introduction": "Hoje vamos treinar leitura com foco no que o texto diz de forma direta e no que ele sugere sem escrever. Informação explícita é o dado que está escrito. Informação implícita é o que precisamos concluir. Separar compreensão, que é entender o que está dito, de interpretação, que é o que podemos concluir a partir do texto, ajuda muito na prova da Etec.",
+    "commonMistakes": [
+      "Confundir informação implícita com opinião pessoal sem base no texto.",
+      "Achar que informação explícita precisa ser reescrita com outras palavras, e não reconhecer paráfrase fiel.",
+      "Escolher alternativa que parece verdadeira no mundo real, mas não está sustentada pelo texto específico."
+    ],
+    "guidedPractice": [
+      {
+        "hint": "Procure o que está escrito literalmente, sem calcular.",
+        "answer": "Que o campeonato começa às 9h e termina às 17h, e que a pausa é de 1h.",
+        "question": "Texto: O campeonato começa às 9h e termina às 17h. A pausa para almoço é de 1h. Qual informação é explícita?",
+        "explanation": "Esses dados estão escritos diretamente. O horário total de duração não está escrito, seria cálculo."
+      },
+      {
+        "hint": "Some o tempo total e subtraia a pausa.",
+        "answer": "O tempo efetivo é menor que 8h, pois há 1h de pausa.",
+        "question": "Texto: O campeonato começa às 9h e termina às 17h. A pausa para almoço é de 1h. O que é implícito sobre o tempo de jogo efetivo?",
+        "explanation": "O texto não diz o tempo efetivo, mas podemos inferir que das 9h às 17h são 8h totais e com 1h de pausa o jogo efetivo é menos."
+      },
+      {
+        "hint": "Compare com o que o texto garante.",
+        "answer": "Porque o texto diz que termina às 17h e começa às 9h, mas há 1h de pausa, então o jogo não dura 8h ininterruptas.",
+        "question": "Por que a alternativa 'O campeonato dura 8 horas de jogo' está errada?",
+        "explanation": "É uma interpretação incorreta que ignora a pausa. A alternativa mistura compreensão literal com conclusão não sustentada."
+      }
+    ],
+    "estimatedMinutes": 55
+  },
+  "id": "3447ba86-a39d-4ec9-ac49-c8180dc4a149",
+  "cached": false,
+  "model": "meta/muse-glimmer-30b"
+}

@@ -34,6 +34,7 @@ const SECTIONS = [
   'chat',
   'theme',
   'resumeLesson',
+  'aiCache',
 ];
 
 export function nowIso() {
@@ -130,6 +131,16 @@ function mergeTodayDone(local, remote, remoteIsNewer) {
   return remoteIsNewer ? remote : local;
 }
 
+// Cache de aulas da IA: união por chave (aula já gerada não se regenera).
+function mergeCache(local = {}, remote = {}) {
+  const out = { ...(local && typeof local === 'object' ? local : {}) };
+  Object.entries(remote && typeof remote === 'object' ? remote : {}).forEach(([key, value]) => {
+    if (!value || typeof value !== 'object') return;
+    if (!out[key] || (value.updatedAt || 0) > (out[key].updatedAt || 0)) out[key] = value;
+  });
+  return out;
+}
+
 // Merge completo (puro): recebe as seções locais e remotas + os horários.
 export function mergeShared({ local = {}, localMeta = {}, remote = {}, remoteMeta = {} } = {}) {
   const data = {};
@@ -160,6 +171,8 @@ export function mergeShared({ local = {}, localMeta = {}, remote = {}, remoteMet
     data[key] = value ?? null;
     meta[key] = (useRemote ? remoteMeta?.[key] : localMeta?.[key]) || '';
   }
+
+  if (local.aiCache || remote.aiCache) data.aiCache = mergeCache(local.aiCache, remote.aiCache);
 
   return { data, meta };
 }

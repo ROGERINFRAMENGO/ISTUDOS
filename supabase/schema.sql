@@ -229,5 +229,67 @@ create policy "app_state_update_all" on public.app_state for update using (true)
 grant select, insert, update on public.app_state to anon, authenticated;
 
 
+
+-- ============================================================
+-- Aulas e quizzes escritos pela IA (generate-lesson / generate-quiz)
+-- O texto so e salvo depois de passar pela validacao da funcao, e o
+-- cache (user_id + cache_key) faz a mesma aula custar uma unica vez.
+-- ============================================================
+
+create table if not exists public.generated_lessons (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  cache_key text not null,
+  curriculum_version text not null default 'v1',
+  week integer,
+  day integer,
+  date_key text,
+  subject text not null,
+  topic text not null,
+  lesson_data jsonb not null,
+  model text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, cache_key)
+);
+
+create table if not exists public.generated_quizzes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  lesson_id uuid not null references public.generated_lessons (id) on delete cascade,
+  subject text not null,
+  topic text not null,
+  difficulty text not null default 'medium',
+  quiz_data jsonb not null,
+  model text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (lesson_id, difficulty)
+);
+
+alter table public.generated_lessons enable row level security;
+alter table public.generated_quizzes enable row level security;
+
+drop policy if exists "generated_lessons_select_own" on public.generated_lessons;
+drop policy if exists "generated_lessons_insert_own" on public.generated_lessons;
+drop policy if exists "generated_lessons_update_own" on public.generated_lessons;
+drop policy if exists "generated_lessons_delete_own" on public.generated_lessons;
+create policy "generated_lessons_select_own" on public.generated_lessons for select using (auth.uid() = user_id);
+create policy "generated_lessons_insert_own" on public.generated_lessons for insert with check (auth.uid() = user_id);
+create policy "generated_lessons_update_own" on public.generated_lessons for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "generated_lessons_delete_own" on public.generated_lessons for delete using (auth.uid() = user_id);
+
+drop policy if exists "generated_quizzes_select_own" on public.generated_quizzes;
+drop policy if exists "generated_quizzes_insert_own" on public.generated_quizzes;
+drop policy if exists "generated_quizzes_update_own" on public.generated_quizzes;
+drop policy if exists "generated_quizzes_delete_own" on public.generated_quizzes;
+create policy "generated_quizzes_select_own" on public.generated_quizzes for select using (auth.uid() = user_id);
+create policy "generated_quizzes_insert_own" on public.generated_quizzes for insert with check (auth.uid() = user_id);
+create policy "generated_quizzes_update_own" on public.generated_quizzes for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "generated_quizzes_delete_own" on public.generated_quizzes for delete using (auth.uid() = user_id);
+
+create index if not exists idx_generated_lessons_user_date on public.generated_lessons (user_id, date_key);
+create index if not exists idx_generated_quizzes_lesson on public.generated_quizzes (lesson_id);
+
 create index if not exists idx_student_progress_user_id on public.student_progress (user_id);
 create index if not exists idx_activity_feed_user_id on public.activity_feed (user_id, created_at desc);

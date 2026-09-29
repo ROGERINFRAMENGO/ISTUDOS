@@ -52,6 +52,21 @@ export default function LessonPage(props) {
         </header>
 
         {props.quizError && <p className="quiz-error">{props.quizError}</p>}
+        {props.aiStatus && (
+          <p className="quiz-error" role="status">
+            ⏳ {props.aiStatus}
+          </p>
+        )}
+        {props.aiError && (
+          <p className="quiz-error">
+            {props.aiError}{' '}
+            {props.onRetryLesson && (
+              <button type="button" className="ghost-button" onClick={props.onRetryLesson}>
+                Tentar de novo
+              </button>
+            )}
+          </p>
+        )}
 
         {!isQuiz && !isResults && (
           <StudyContent {...props} />
@@ -92,19 +107,23 @@ export default function LessonPage(props) {
 
 function StudyContent(props) {
   const { lesson, detail } = props;
+  // Aula do cronograma gerada pela IA tem layout proprio (sem video obrigatorio).
+  if (detail?.generated) return <GeneratedStudy {...props} />;
   return (
     <>
       <section className="panel lesson-hero">
-        <div className="study-video-wrap lesson-video">
-          <iframe
-            src={lesson.videoUrl}
-            title={lesson.topic}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerPolicy="strict-origin-when-cross-origin"
-            allowFullScreen
-          />
-        </div>
+        {lesson.videoUrl ? (
+          <div className="study-video-wrap lesson-video">
+            <iframe
+              src={lesson.videoUrl}
+              title={lesson.topic}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          </div>
+        ) : null}
         <div className="lesson-hero-copy">
           <span className="tag" style={{ background: `${lesson.color}1a`, color: lesson.color }}>
             Video da aula · {lesson.duration} min
@@ -123,15 +142,15 @@ function StudyContent(props) {
             <figcaption>{detail.images[0].caption}</figcaption>
           </figure>
         )}
-        {(detail?.sections || []).slice(0, 3).map((section) => (
-          <article key={section.title} className="lesson-section">
+        {(detail?.sections || []).slice(0, 3).map((section, sectionIndex) => (
+          <article key={'secao-' + sectionIndex} className="lesson-section">
             <h4>{section.title}</h4>
-            {section.paragraphs.map((paragraph, index) => (
-              <p key={`${section.title}-${index}`}>{paragraph}</p>
+            {(section.paragraphs || []).map((paragraph, index) => (
+              <p key={'p-' + sectionIndex + '-' + index}>{paragraph}</p>
             ))}
             <ul>
-              {section.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
+              {(section.bullets || []).map((bullet, bulletIndex) => (
+                <li key={'b-' + bulletIndex}>{bullet}</li>
               ))}
             </ul>
           </article>
@@ -142,15 +161,15 @@ function StudyContent(props) {
             <figcaption>{detail.images[1].caption}</figcaption>
           </figure>
         )}
-        {(detail?.sections || []).slice(3).map((section) => (
-          <article key={section.title} className="lesson-section">
+        {(detail?.sections || []).slice(3).map((section, sectionIndex) => (
+          <article key={'secao-' + sectionIndex} className="lesson-section">
             <h4>{section.title}</h4>
-            {section.paragraphs.map((paragraph, index) => (
-              <p key={`${section.title}-${index}`}>{paragraph}</p>
+            {(section.paragraphs || []).map((paragraph, index) => (
+              <p key={'p-' + sectionIndex + '-' + index}>{paragraph}</p>
             ))}
             <ul>
-              {section.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
+              {(section.bullets || []).map((bullet, bulletIndex) => (
+                <li key={'b-' + bulletIndex}>{bullet}</li>
               ))}
             </ul>
           </article>
@@ -243,5 +262,127 @@ function ResultsContent(props) {
         </button>
       </div>
     </section>
+  );
+}
+
+// Aula do topico do cronograma, escrita pela IA e validada no backend.
+function GeneratedStudy(props) {
+  const { lesson, detail } = props;
+  const quizCount = props.quiz?.length || 5;
+  return (
+    <>
+      <section className="panel lesson-hero">
+        <div className="lesson-hero-copy">
+          <span className="tag" style={{ background: `${lesson.color || '#a377ff'}1a`, color: lesson.color || '#a377ff' }}>
+            Aula do cronograma · {lesson.duration} min · feita pela IA para voce
+          </span>
+          <h3>{detail.introduction || lesson.topic}</h3>
+          {detail.objectives?.length ? (
+            <>
+              <h4>🎯 Ao final desta aula voce consegue</h4>
+              <ul>
+                {detail.objectives.map((objective) => (
+                  <li key={objective}>{objective}</li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          <p className="lesson-timer">Tempo nesta aula: {props.lessonSeconds}s (minimo 10s)</p>
+        </div>
+      </section>
+
+      <section className="panel lesson-content">
+        <h3>Aula completa e detalhada</h3>
+        {(detail.sections || []).map((section, sectionIndex) => (
+          <article key={'secao-' + sectionIndex} className="lesson-section">
+            <h4>{section.title}</h4>
+            {(section.paragraphs || []).map((paragraph, index) => (
+              <p key={'p-' + sectionIndex + '-' + index}>{paragraph}</p>
+            ))}
+            {section.bullets?.length ? (
+              <ul>
+                {(section.bullets || []).map((bullet, bulletIndex) => (
+                  <li key={'b-' + bulletIndex}>{bullet}</li>
+                ))}
+              </ul>
+            ) : null}
+            {(section.examples || []).map((example, index) => (
+              <div key={'ex-' + sectionIndex + '-' + index} className="lesson-section">
+                <strong>✍️ Exemplo resolvido</strong>
+                <p>{example.problem}</p>
+                <p>{example.solution}</p>
+                {example.explanation ? (
+                  <p className="explain-box">
+                    <strong>Por que? </strong>
+                    {example.explanation}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </article>
+        ))}
+      </section>
+
+      {detail.guidedPractice?.length ? (
+        <section className="panel lesson-content">
+          <h3>Pratique comigo (tap para ver a resposta)</h3>
+          {detail.guidedPractice.map((item, index) => (
+            <article key={`${item.question}-${index}`} className="lesson-section">
+              <h4>
+                {index + 1}. {item.question}
+              </h4>
+              {item.hint ? (
+                <p>
+                  <strong>Dica: </strong>
+                  {item.hint}
+                </p>
+              ) : null}
+              <details>
+                <summary>Ver resposta</summary>
+                <p>
+                  <strong>{item.answer}</strong>
+                </p>
+                {item.explanation ? <p className="explain-box">{item.explanation}</p> : null}
+              </details>
+            </article>
+          ))}
+        </section>
+      ) : null}
+
+      {detail.commonMistakes?.length ? (
+        <section className="panel lesson-content">
+          <h3>⚠️ Onde a galera erra</h3>
+          <ul>
+            {detail.commonMistakes.map((mistake) => (
+              <li key={mistake}>{mistake}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {detail.summary?.length ? (
+        <section className="panel lesson-content">
+          <h3>📌 Resumo para levar</h3>
+          <ul>
+            {detail.summary.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="panel lesson-confirm">
+        <h3>Terminei de estudar, ir para o questionario</h3>
+        <p>
+          Quando terminar de ler tudo, clique abaixo para responder as {quizCount} questoes desta aula
+          {!props.quiz?.length ? ' (a IA prepara na hora)' : ''}.
+        </p>
+        <div className="hero-actions">
+          <button className="primary-button" onClick={props.onGoToQuiz} disabled={!props.canShowQuiz}>
+            Continuar para o questionario ({quizCount} questoes)
+          </button>
+        </div>
+      </section>
+    </>
   );
 }

@@ -57,9 +57,37 @@ O site é de **um único usuário**, então o estado compartilhado fica em **uma
 Lógica completa em [`src/services/sync.js`](src/services/sync.js).
 
 
-## Tutor IA — Gemini (já conectada ✅)
+## 🤖 IA (NVIDIA) — aula de cada tópico + quiz + Tutora
 
-A Edge Function `ai-tutor` (v8) está implantada e **conectada ao Gemini** (API nativa do Google) com uma cascata de 4 modelos — `gemini-3.8-flash` → `gemini-3.6-flash` → `gemini-3.1-flash-lite` → `gemini-flash-lite-latest`. Se um modelo devolver 429 (cota) ou 503 (demanda), a função tenta o próximo em vez de mostrar erro; o último que funcionou passa a ser tentado primeiro.
+A aula de **cada tópico do cronograma** é escrita pela IA na hora, e o quiz nasce do texto que ela acabou de escrever. São 3 Edge Functions (código em [`supabase/functions/`](supabase/functions/)):
+
+| Função | O que faz | Quando o site chama |
+| --- | --- | --- |
+| `generate-lesson` | Escreve a aula do dia: objetivos, seções explicadas, prática guiada, erros comuns e resumo | ao abrir uma aula do cronograma |
+| `generate-quiz` | Cria as 5 questões **do conteúdo realmente gerado** | logo depois da aula (e de novo se você clicar em "continuar" antes dela chegar) |
+| `tutor` | A Tutora do chat, com contexto lido do banco e ferramentas **somente leitura** | a cada mensagem do chat |
+
+- **Modelo:** `meta/muse-glimmer-30b` (`supabase/functions/_shared/nvidia.js`), com 1 retentativa em 429/503
+- **A chave da NVIDIA fica só no servidor** (`NVIDIA_API_KEY` como secret) — nada de segredo no navegador
+- **Validação antes de salvar:** `_shared/schemas.js` confere a estrutura (4 alternativas, índice da resposta correta válido, tamanho). Veio torto → a função manda a IA corrigir uma vez; se continuar torto, devolve erro e **nada é salvo**
+- **Cache em 3 camadas:** ① `localStorage` (`istudos_ai_lessons`) ② a linha `app_state` da sincronização (o celular reaproveita a aula que o computador gerou) ③ tabelas `generated_lessons` / `generated_quizzes`. Reabrir a mesma aula custa zero
+- **Sessão:** usa o login por e-mail se estiver aberto; senão abre uma sessão anônima num cliente paralelo (`aiSupabase`, storageKey `istudos_ai_auth`) que **não pisa** no login nem no progresso do aparelho
+- **Se a IA falhar** (sem internet, secret ausente, cota): a aula continua na tela, aparece o motivo com o botão **Tentar de novo**, e o resto do app segue funcionando
+
+Toda a integração do front passa por [`src/services/ai.js`](src/services/ai.js) (uma camada só — nenhuma tela chama `fetch` direto).
+
+### Ligar a IA (feito uma vez)
+
+```bash
+npx supabase login
+npx supabase link --project-ref ehuwpvgcmssxrafsmtfo
+npx supabase functions deploy generate-lesson
+npx supabase functions deploy generate-quiz
+npx supabase functions deploy tutor
+npx supabase secrets set NVIDIA_API_KEY=nvapi-xxxxxxxx
+```
+
+E no **Dashboard** (não tem pela CLI): **Authentication → Sign In → Allow anonymous sign-ins = on**. Sem isso as funções devolvem `401` e o site mostra o aviso de "IA ainda não liberada" em vez de quebrar.
 
 - A chave fica **só no servidor** (nunca no navegador nem no front-end)
 - O site envia o contexto (XP, sequência, aulas de hoje) junto de cada pergunta
@@ -69,7 +97,7 @@ A Edge Function `ai-tutor` (v8) está implantada e **conectada ao Gemini** (API 
 
 O chat é o mesmo componente nas duas telas ([`src/components/TutorChat.jsx`](src/components/TutorChat.jsx)): a aba "Tutor IA" e o painel que abre dentro da lição compartilham o mesmo histórico e a mesma sincronização.
 
-Para trocar o modelo ou a chave, defina os segredos `AI_MODEL` / `AI_FALLBACK_MODEL` / `GEMINI_API_KEY` na função (Supabase Dashboard → Edge Functions → ai-tutor → Secrets). Opcionalmente você pode apontar outra URL com `VITE_AI_API_URL` no `.env`.
+Para trocar o modelo ou a chave: `NVIDIA_API_KEY` como secret (Dashboard → Edge Functions → Secrets) e `NVIDIA_MODEL` em [`supabase/functions/_shared/nvidia.js`](supabase/functions/_shared/nvidia.js). A função antiga `ai-tutor` (Gemini) ainda está implantada, mas **não é mais chamada** pelo site — pode ser apagada quando a nova estiver testada.
 
 ## Deploy (GitHub Pages)
 

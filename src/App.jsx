@@ -40,6 +40,15 @@ import { getLessonDetail } from './data/lessonContent';
 import { getFullLessonQuiz } from './data/lessonQuiz';
 import { THEMES, applyTheme, loadTheme } from './data/themes';
 import { scheduleWeeks } from './data/schedule';
+import { getPlanDayById, isGeneratedDay, planDayToLesson, planLessonsForDate, totalGeneratedBlocks } from './data/curriculum';
+import {
+  AI_MESSAGES,
+  getCachedLesson,
+  getSharedCachePayload,
+  loadLessonForPlan,
+  loadQuizForLesson,
+  mergeSharedCache,
+} from './services/ai';
 import SchedulePage, { SettingsPage } from './components/SchedulePage';
 import LessonPage from './components/LessonPage';
 import AiChatPage from './components/AiChatPage';
@@ -224,11 +233,16 @@ function App() {
   const todayDateKey = useMemo(() => getDateKey(new Date()), []);
   const todayKey = useMemo(() => getDayKey(new Date()), []);
   const todayLessons = useMemo(() => {
+    // O CRONOGRAMA manda: cada bloco do dia vira aula da IA (generate-lesson).
+    const planCards = planLessonsForDate(todayDateKey);
+    if (planCards.length) return planCards;
+    // Fora do período do cronograma (ou em dia sem bloco) cai nas aulas fixas.
     const byDate = getLessonsForDate(todayDateKey, lessons);
-    if (byDate.length) return byDate;
-    return getLessonsForDay(todayKey, lessons);
+    return byDate.length ? byDate : getLessonsForDay(todayKey, lessons);
   }, [todayDateKey, todayKey]);
   const [selectedStudyLesson, setSelectedStudyLesson] = useState(() => {
+    const plans = planLessonsForDate(getDateKey(new Date()));
+    if (plans.length) return plans[0];
     const byDate = getLessonsForDate(getDateKey(new Date()), lessons);
     if (byDate.length) return byDate[0];
     return getLessonsForDay(getDayKey(new Date()), lessons)[0] || null;
@@ -280,6 +294,8 @@ function App() {
     todayDone: { date: todayDateKey, count: todayDoneCount },
     theme: themeName,
     resumeLesson: resumeLesson || null,
+    // Aulas ja geradas: o outro aparelho reaproveita em vez de pagar IA de novo.
+    aiCache: getSharedCachePayload(),
   });
 
   // Aplica no site o resultado do merge vindo do servidor.
@@ -292,6 +308,7 @@ function App() {
     if (Array.isArray(data.studyDates)) setStudyDates(data.studyDates);
     if (data.todayDone && data.todayDone.date === todayDateKey) setTodayDoneCount(Number(data.todayDone.count) || 0);
     if (data.theme && THEMES[data.theme]) setThemeName(data.theme);
+    if (data.aiCache) mergeSharedCache(data.aiCache);
     if (data.resumeLesson !== undefined) {
       setResumeLesson(data.resumeLesson || null);
       if (typeof window !== 'undefined') {
@@ -520,6 +537,84 @@ function App() {
   const currentStudyLesson = selectedStudyLesson || currentStudyPlan[0] || null;
   const currentLessonId = currentStudyLesson?.id;
 
+  // ---------- IA: a aula do TOPOICO DO CRONOGRAMA (generate-lesson/quiz) ----------
+  const [aiLesson, setAiLesson] = useState(null); // { lesson, lessonId, model }
+  const [aiQuiz, setAiQuiz] = useState(null);
+  const [aiStatus, setAiStatus] = useState('');
+  const [aiError, setAiError] = useState('');
+  const [aiNonce, setAiNonce] = useState(0);
+  const openPlan = selectedStudyLesson?.plan ?? null;
+
+  useEffect(() => {
+    if (!openPlan) {
+      setAiLesson(null);
+      setAiQuiz(null);
+      setAiStatus('');
+      setAiError('');
+      return undefined;
+    }
+
+    // 1. Ja gerada neste aparelho (ou vinda do outro): nao paga IA de novo.
+    const cached = getCachedLesson(openPlan);
+    if (cached?.lesson) {
+      setAiLesson({ lesson: cached.lesson, lessonId: cached.lessonId ?? null, model: cached.model ?? null });
+      setAiQuiz(cached.quiz ?? null);
+      setAiStatus('');
+      setAiError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setAiLesson(null);
+      setAiQuiz(null);
+      setAiError('');
+      setAiStatus(AI_MESSAGES.generatingLesson);
+      try {
+        const result = await loadLessonForPlan(openPlan, { onStatus: setAiStatus });
+        if (cancelled) return;
+        setAiLesson({ lesson: result.lesson, lessonId: result.lessonId, model: result.model });
+        // O quiz vem na sequencia: quando ela clicar em "continuar" ja esta na tela.
+        setAiStatus(AI_MESSAGES.generatingQuiz);
+        const quizResult = await loadQuizForLesson(openPlan, result.lessonId, { lesson: result.lesson });
+        if (cancelled) return;
+        setAiQuiz(quizResult.quiz);
+        setAiStatus('');
+      } catch (error) {
+        if (cancelled) return;
+        console.warn('[ai] a aula do cronograma nao veio', error);
+        setAiStatus('');
+        setAiError(error?.message || AI_MESSAGES.offline);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openPlan?.id, aiNonce]);
+
+  // Aula realmente exibida: cartao do cronograma + conteudo escrito pela IA.
+  const generatedStudyLesson = useMemo(() => {
+    const base = currentStudyLesson;
+    if (!base?.plan || !aiLesson?.lesson) return base;
+    return {
+      ...base,
+      ...aiLesson.lesson,
+      id: base.id,
+      subject: base.subject,
+      topic: base.topic,
+      time: base.time,
+      color: base.color,
+      objective: base.objective,
+      duration: aiLesson.lesson.estimatedMinutes || base.duration,
+      videoUrl: '',
+      generated: true,
+      lessonId: aiLesson.lessonId,
+      model: aiLesson.model,
+    };
+  }, [currentStudyLesson, aiLesson]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     localStorage.setItem(COMPLETED_LESSONS_KEY, JSON.stringify(completedLessonIds));
@@ -620,9 +715,15 @@ function App() {
 
   const getLessonQuiz = (lesson) => getFullLessonQuiz(lesson);
 
-  const lessonQuiz = currentStudyLesson ? getLessonQuiz(currentStudyLesson) : [];
-  const lessonDetail = currentStudyLesson ? getLessonDetail(currentStudyLesson) : null;
-  const canShowQuiz = lessonSeconds >= LESSON_MIN_SECONDS;
+  // Aula da IA: o quiz vem do generate-quiz. Aula cadastrada: quiz manual.
+  const lessonQuiz = useMemo(() => {
+    if (generatedStudyLesson?.generated) return aiQuiz?.questions ?? [];
+    return generatedStudyLesson ? getLessonQuiz(generatedStudyLesson) : [];
+  }, [generatedStudyLesson, aiQuiz]);
+  const lessonDetail = generatedStudyLesson ? getLessonDetail(generatedStudyLesson) : null;
+  const canShowQuiz =
+    lessonSeconds >= LESSON_MIN_SECONDS &&
+    (generatedStudyLesson?.generated ? Boolean(lessonQuiz.length || aiError) : true);
 
   const levelProgress = useMemo(() => {
     const currentLevelXp = 1000;
@@ -655,6 +756,7 @@ function App() {
     if (isSupabaseConfigured) {
       await signOut();
     }
+    resetAiSession();
 
     setActiveUser(null);
     // Sair nao apaga o progresso salvo neste dispositivo.
@@ -801,6 +903,15 @@ function App() {
     setLessonStartedAt(new Date().toISOString());
   };
 
+  // Clique num BLOCO do Cronograma -> abre a aula daquele tópico (a IA escreve).
+  // Recebe o id do bloco (ex.: dia-2026-09-29-b1-portugues), não a data,
+  // porque cada dia tem dois blocos diferentes.
+  const handleOpenPlanDay = (planId) => {
+    const plan = getPlanDayById(planId);
+    if (!plan || !isGeneratedDay(plan)) return;
+    handleLessonStart(planDayToLesson(plan));
+  };
+
   const handleResumeLesson = () => {
     if (!resumeLesson?.lessonId) return;
     const found = lessons.find((l) => l.id === resumeLesson.lessonId) || todayLessons.find((l) => l.id === resumeLesson.lessonId);
@@ -830,12 +941,29 @@ function App() {
     setQuizError('');
   };
 
-  const handleGoToQuiz = () => {
+  const handleGoToQuiz = async () => {
     if (lessonSeconds < LESSON_MIN_SECONDS) {
       setQuizError(`Fique na aula por pelo menos ${LESSON_MIN_SECONDS} segundos antes de continuar.`);
       return;
     }
     setQuizError('');
+
+    // Aula da IA sem quiz na tela ainda: gera agora (a aula ja esta salva no banco).
+    if (generatedStudyLesson?.generated && !lessonQuiz.length) {
+      setAiStatus(AI_MESSAGES.generatingQuiz);
+      try {
+        const result = await loadQuizForLesson(openPlan, generatedStudyLesson.lessonId, {
+          lesson: aiLesson?.lesson ?? null,
+        });
+        setAiQuiz(result.quiz);
+        setAiStatus('');
+      } catch (error) {
+        setAiStatus('');
+        setQuizError(error?.message || AI_MESSAGES.offline);
+        return;
+      }
+    }
+
     setLessonFlow('quiz');
     setLessonView('quiz');
   };
@@ -923,7 +1051,7 @@ function App() {
   if (showLessonPage) {
     return (
       <LessonPage
-        lesson={currentStudyLesson}
+        lesson={generatedStudyLesson}
         lessonView={lessonView}
         detail={lessonDetail}
         quiz={lessonQuiz}
@@ -932,6 +1060,9 @@ function App() {
         quizResults={quizResults}
         lessonHits={lessonHits}
         quizError={quizError}
+        aiStatus={aiStatus}
+        aiError={aiError}
+        onRetryLesson={() => setAiNonce((n) => n + 1)}
         lessonSeconds={lessonSeconds}
         canShowQuiz={canShowQuiz}
         isSavingLesson={isSavingLesson}
@@ -1105,7 +1236,7 @@ function App() {
             <section className="stats-grid" id="progresso">
               <StatsContent
                 studentState={studentState}
-                totalLessons={lessons.length}
+                totalLessons={totalGeneratedBlocks}
                 lessonSeconds={lessonSeconds}
                 lessonView={lessonView}
               />
@@ -1114,7 +1245,12 @@ function App() {
         )}
 
         {activePage === 'Cronograma' && (
-          <SchedulePage weeks={scheduleWeeks} todayDateKey={todayDateKey} completedIds={completedLessonIds} />
+          <SchedulePage
+            weeks={scheduleWeeks}
+            todayDateKey={todayDateKey}
+            completedIds={completedLessonIds}
+            onOpenPlanDay={handleOpenPlanDay}
+          />
         )}
 
         {activePage === 'Tutor IA' && (
@@ -1148,10 +1284,10 @@ function TodayPanelContent(props) {
     <>
       <div className="panel-head">
         <h3>Estudo de hoje — {DAY_LABELS[props.todayKey]} {formatDateBR(props.todayDateKey)}</h3>
-        <span className="tag">{props.currentStudyPlan.length} aula(s) neste dia</span>
+        <span className="tag">{props.currentStudyPlan.length} bloco(s) · {props.currentStudyPlan.reduce((sum, item) => sum + (item.duration || 0), 0)} min</span>
       </div>
       {props.currentStudyPlan.length === 0 && (
-        <p className="quiz-error">Nenhuma aula para {formatDateBR(props.todayDateKey)}. Em src/data/lessons.js crie uma aula com date: '{props.todayDateKey}'.</p>
+        <p className="quiz-error">Nenhum bloco de aula para {formatDateBR(props.todayDateKey)} no cronograma. Veja a aba Cronograma para o conteúdo do dia.</p>
       )}
       <div className="study-plan-grid">
         {props.currentStudyPlan.map((item) => (
@@ -1160,7 +1296,7 @@ function TodayPanelContent(props) {
               <span className="study-dot" style={{ background: item.color }} />
               <div>
                 <strong>{item.subject}</strong>
-                <small>{item.time}</small>
+                <small>{item.time}{item.blockLabel ? ` · ${item.blockLabel}` : ''}</small>
               </div>
             </div>
             <h4>{item.topic}</h4>

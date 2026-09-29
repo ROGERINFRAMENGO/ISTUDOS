@@ -1,0 +1,83 @@
+{
+  "lesson": {
+    "title": "Informação explícita e implícita em Português",
+    "topic": "informação explícita",
+    "subject": "Português",
+    "summary": [
+      "Informação explícita está escrita diretamente no texto e pode ser localizada",
+      "Informação implícita precisa ser inferida a partir de pistas do texto",
+      "Compreensão é entender o que o texto diz de forma correta",
+      "Interpretação é atribuir sentido e concluir a intenção ou finalidade do texto"
+    ],
+    "sections": [
+      {
+        "title": "Informação explícita",
+        "examples": [
+          {
+            "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 8h às 17h. No sábado, abre apenas até 12h. Pergunta: Em que dias a biblioteca funciona até 17h?",
+            "solution": "De segunda a sexta-feira",
+            "explanation": "A resposta está escrita literalmente na primeira frase. O texto diz explicitamente 'de segunda a sexta, das 8h às 17h'. Não precisamos inferir nada."
+          }
+        ],
+        "explanation": "Informação explícita é aquela que está escrita de forma direta no texto, sem precisar adivinhar. É o que o autor deixa claro com palavras objetivas. Para localizar, procure por dados, nomes, números, datas, definições e afirmações diretas. Pergunte a si mesma: isso está escrito literalmente? Se sim, é explícita. Na prova da Etec, questões de explícita pedem para localizar trechos. A estratégia é voltar ao texto e sublinhar a frase exata que responde. Não aceite sinônimo próprio, precisa ser o que o texto diz. Exemplo prático: se o texto diz que a aula começa às 7h, a informação explícita é o horário 7h. Não é interpretação dizer que é de manhã, isso já é inferência. Treine sempre buscar a evidência textual antes de responder."
+      },
+      {
+        "title": "Informação implícita",
+        "examples": [
+          {
+            "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 8h às 17h. No sábado, abre apenas até 12h. Pergunta: O aluno que chega às 18h de uma quinta-feira consegue estudar lá?",
+            "solution": "Não, porque a biblioteca fecha às 17h",
+            "explanation": "O texto não diz 'o aluno não consegue entrar'. Está implícito: quinta-feira funciona até 17h e o aluno chega às 18h, logo ele chega depois do fechamento. É inferência sustentada."
+          }
+        ],
+        "explanation": "Informação implícita não está escrita diretamente, precisa ser inferida a partir de pistas do texto. É uma conclusão lógica que o leitor tira usando contexto, conhecimento prévio e relações entre frases. O autor não diz de forma clara, mas dá indícios. Para identificar, pergunte: o texto não diz isso com essas palavras, mas dá pistas para eu concluir? Cuidado para não inventar. A inferência precisa ser sustentada pelo texto. Exemplo: se o texto diz que a biblioteca fecha às 17h e o aluno chega às 18h, está implícito que ele não conseguirá entrar. Isso não está escrito, mas é consequência lógica. Na prova, questões implícitas usam termos como 'pode-se concluir', 'deduzir', 'inferir'."
+      },
+      {
+        "title": "Compreensão e interpretação",
+        "examples": [
+          {
+            "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 8h às 17h. No sábado, abre apenas até 12h. Pergunta: Qual a finalidade desse texto?",
+            "solution": "Informar os horários de funcionamento da biblioteca",
+            "explanation": "Compreensão localiza os horários. Interpretação conclui a finalidade: o autor quer informar o leitor. Não está escrito 'a finalidade é informar', mas interpretamos pelo conteúdo objetivo."
+          }
+        ],
+        "explanation": "Compreensão é entender o que o texto diz, tanto explícito quanto implícito, de forma correta. É captar ideias principais, detalhes e relações. Interpretação é o passo seguinte: atribuir sentido, relacionar com contexto, fazer juízo crítico sobre o texto. Compreensão responde o que está no texto. Interpretação responde o que o texto significa. Na prova da Etec, compreensão aparece em questões de localização e resumo. Interpretação aparece em questões de finalidade, tom, intenção do autor e conclusão. Para diferenciar, use o teste da evidência: se a resposta exige apenas localizar, é compreensão. Se exige concluir, relacionar ou avaliar, é interpretação. Treine sempre justificar com base no texto."
+      }
+    ],
+    "objectives": [
+      "Distinguir informação explícita de informação implícita em textos curtos",
+      "Identificar o que o texto diz diretamente e o que precisa ser inferido",
+      "Aplicar compreensão e interpretação em questões de prova da Etec"
+    ],
+    "introduction": "Hoje é semana 1, dia 2, bloco 1 de 2. Vamos trabalhar informação explícita e implícita em 55 minutos. O foco é aprender a separar o que o texto diz de forma direta do que precisa ser concluído. Ao final você vai saber responder questões de compreensão e interpretação com segurança. O que não couber agora fica para revisão amanhã.",
+    "commonMistakes": [
+      "Confundir opinião pessoal com informação implícita sustentada pelo texto",
+      "Responder questão explícita com inferência própria em vez de localizar a frase exata",
+      "Achar que interpretação é sinônimo de compreensão e não justificar a conclusão com pistas do texto"
+    ],
+    "guidedPractice": [
+      {
+        "hint": "Procure a palavra 'termina' no texto.",
+        "answer": "Às 16h",
+        "question": "Texto: O campeonato começa às 9h e termina às 16h. A entrada é gratuita até as 10h. Pergunta explícita: Que horas o campeonato termina?",
+        "explanation": "Informação explícita, está escrita diretamente: 'termina às 16h'. Não precisa inferir."
+      },
+      {
+        "hint": "Compare o horário de chegada com o limite da gratuidade.",
+        "answer": "Sim, porque a gratuidade vai até as 10h",
+        "question": "Texto: O campeonato começa às 9h e termina às 16h. A entrada é gratuita até as 10h. Pergunta implícita: Alguém que chega às 11h paga entrada?",
+        "explanation": "O texto não diz 'paga', mas é implícito: chegada às 11h é depois das 10h, logo não é gratuito."
+      },
+      {
+        "hint": "Pense no efeito que isso causa no público.",
+        "answer": "Atrair público no início do evento",
+        "question": "Texto: O campeonato começa às 9h e termina às 16h. A entrada é gratuita até as 10h. Pergunta de interpretação: Qual a intenção do organizador ao oferecer entrada gratuita até as 10h?",
+        "explanation": "Interpretação: o texto não diz a intenção, mas podemos concluir que gratuidade inicial incentiva chegada cedo e aumenta público."
+      }
+    ],
+    "estimatedMinutes": 55
+  },
+  "id": "38ac7db9-5639-47fb-8e52-80a7c1f6ce46",
+  "cached": false,
+  "model": "meta/muse-glimmer-30b"
+}

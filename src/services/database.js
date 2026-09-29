@@ -246,11 +246,12 @@ export async function getCompletedLessonIds(userId) {
   return (data || []).map((row) => row.lesson_id);
 }
 
+// Total de aulas do CURONOGRAMA (2 blocos por dia), não das aulas
+// antigas de src/data/lessons.js: o progresso geral é sobre o plano oficial.
 export async function countTotalLessons() {
   try {
-    const mod = await import('../data/lessons');
-    const list = mod.lessons || [];
-    return Array.isArray(list) ? list.length : 0;
+    const mod = await import('../data/curriculum');
+    return mod.totalGeneratedBlocks ?? 0;
   } catch {
     return 0;
   }

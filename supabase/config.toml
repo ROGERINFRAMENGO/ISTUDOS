@@ -1,0 +1,9 @@
+project_id = "ehuwpvgcmssxrafsmtfo"
+
+[functions.generate-lesson]
+# A funcao valida o JWT sozinha em _shared/http.js (authenticate -> /auth/v1/user)
+# e devolve 401 com mensagem util, entao o gateway nao precisa bloquear antes.
+verify_jwt = false
+# O modelo (meta/muse-glimmer-30b) leva mais de 150s para escrever a aula
+# inteira, e o padrao do gateway estourava com 504 IDLE_TIMEOUT.
+

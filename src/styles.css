@@ -394,6 +394,16 @@ h1, h2, h3, h4, p {
   border: 1px solid var(--border);
 }
 
+/* Botão "Abrir aula da IA" dentro da tabela do Cronograma */
+.schedule-open {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
 .link-button {
   background: transparent;
   color: var(--primary);
@@ -941,6 +951,45 @@ h1, h2, h3, h4, p {
 
 .schedule-planned {
   opacity: 0.75;
+}
+
+/* Cada dia do cronograma tem 2 blocos: a data ocupa as duas linhas. */
+.schedule-day {
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.schedule-day-total {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.schedule-block {
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.schedule-block small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+.schedule-block-subtopics {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  margin-top: 3px;
+}
+
+.schedule-kind {
+  margin-left: 4px;
+  opacity: 0.85;
 }
 
 .config-panel-page {
