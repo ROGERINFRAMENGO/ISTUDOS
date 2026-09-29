@@ -1,0 +1,56 @@
+{
+  "case": "ciencias",
+  "promptChars": 3429,
+  "models": [
+    "openai/gpt-oss-20b"
+  ],
+  "repeats": 1,
+  "results": [
+    {
+      "case": "ciencias",
+      "model": "openai/gpt-oss-20b",
+      "attempt": 1,
+      "jsonModeWanted": true,
+      "probeJsonMode": null,
+      "ok": false,
+      "totalMs": 24323,
+      "requestMs": 24320,
+      "jsonOk": true,
+      "extractOk": true,
+      "validateOk": false,
+      "validateErrors": [
+        "sections[0].examples: a primeira secao precisa de 1 exemplo resolvido",
+        "summary[0]: muito longo (469 caracteres, maximo 320)",
+        "summary: minimo 2 itens, veio 1"
+      ],
+      "completionTokens": 1382,
+      "promptTokens": 951,
+      "finishReason": "stop",
+      "usedJsonMode": true,
+      "rawChars": 2,
+      "rawPreview": "{\"title\":\"Ciências: Matéria, Substância, Mistura e Estados Físicos\",\"objectives\":[\"Entender o que é matéria e suas propriedades fundamentais.\",\"Diferenciar substância pura, mistura e identificar seus tipos.\",\"Reconhecer os três estados físicos da matéria e as mudanças entre eles.\"],\"introduction\":\"Hoje vamos explorar o que compõe tudo ao nosso redor: a matéria. Começaremos definindo o que é matéria, depois veremos como ela pode ser pura ou misturada, e finalmente estudaremos os estados físicos – sólido, líquido e gasoso – e as transformações que ocorrem entre eles. Cada etapa traz exemplos práticos que aparecem nas provas da Etec, garantindo que você saiba aplicar o conceito em situações rea",
+      "counts": {
+        "objectives": 0,
+        "sections": 0,
+        "guidedPractice": 0,
+        "commonMistakes": 0,
+        "summary": 0,
+        "chars": 2,
+        "words": 1
+      },
+      "quality": {
+        "subtopicos": "0/4",
+        "placeholders": false,
+        "inventou_nota": false,
+        "delegou_pesquisa": false,
+        "com_exemplo": false,
+        "exercicio_completo": false,
+        "resposta_explicada": true,
+        "markdown": false,
+        "html": false,
+        "acentos_ok": false
+      },
+      "lesson": null
+    }
+  ]
+}

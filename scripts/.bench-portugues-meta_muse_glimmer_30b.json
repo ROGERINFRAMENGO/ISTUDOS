@@ -1,0 +1,129 @@
+{
+  "case": "portugues",
+  "promptChars": 3614,
+  "models": [
+    "meta/muse-glimmer-30b"
+  ],
+  "repeats": 1,
+  "results": [
+    {
+      "case": "portugues",
+      "model": "meta/muse-glimmer-30b",
+      "attempt": 1,
+      "jsonModeWanted": true,
+      "probeJsonMode": null,
+      "ok": true,
+      "totalMs": 56291,
+      "requestMs": 56287,
+      "jsonOk": true,
+      "extractOk": true,
+      "validateOk": true,
+      "validateErrors": [],
+      "completionTokens": 1635,
+      "promptTokens": 947,
+      "finishReason": "stop",
+      "usedJsonMode": true,
+      "rawChars": 5685,
+      "rawPreview": null,
+      "counts": {
+        "objectives": 3,
+        "sections": 3,
+        "guidedPractice": 3,
+        "commonMistakes": 3,
+        "summary": 4,
+        "chars": 5685,
+        "words": 803
+      },
+      "quality": {
+        "subtopicos": "4/4",
+        "placeholders": false,
+        "inventou_nota": false,
+        "delegou_pesquisa": false,
+        "com_exemplo": true,
+        "exercicio_completo": true,
+        "resposta_explicada": false,
+        "markdown": false,
+        "html": false,
+        "acentos_ok": true
+      },
+      "lesson": {
+        "title": "Informação explícita e implícita em Português",
+        "subject": "Português",
+        "topic": "informação explícita",
+        "estimatedMinutes": 55,
+        "objectives": [
+          "Identificar informação explícita em um texto curto",
+          "Diferenciar informação implícita da explícita",
+          "Aplicar compreensão e interpretação para responder questões de prova"
+        ],
+        "introduction": "Hoje vamos treinar leitura com foco em prova. Primeiro vamos ver o que o texto diz de forma direta e o que ele deixa subentendido. Depois vamos separar compreensão, que é entender o que está escrito, de interpretação, que é concluir algo a partir do texto. O material é curto e direto para caber no bloco de 55 minutos.",
+        "sections": [
+          {
+            "title": "Informação explícita",
+            "explanation": "Informação explícita é aquela que o autor escreve de forma clara e direta, sem precisar adivinhar. Ela está literalmente no texto, nas palavras do autor. Para localizar, procure dados, nomes, datas, números, definições e afirmações objetivas. Na prova da Etec, a questão de informação explícita pede exatamente o que o texto diz, não o que você acha. O erro comum é acrescentar conhecimento externo. Leia com atenção e marque no texto a frase que responde a pergunta. Se a resposta não estiver copiada ou parafraseada no texto, não é explícita.",
+            "examples": [
+              {
+                "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é das 8h às 12h. Qual é o horário de funcionamento da biblioteca na segunda-feira?",
+                "solution": "O texto diz que de segunda a sexta o funcionamento é das 7h às 18h. Segunda-feira está dentro desse intervalo. Resposta: das 7h às 18h.",
+                "explanation": "A informação está explícita na primeira frase. Não é preciso inferir, apenas localizar o trecho que cita segunda a sexta e o horário."
+              }
+            ]
+          },
+          {
+            "title": "Informação implícita",
+            "explanation": "Informação implícita é aquela que não está escrita diretamente, mas pode ser deduzida a partir do que está explícito. É um sentido subentendido, uma conclusão lógica que o texto sugere. Para encontrar, una pistas do texto e use conhecimento geral aceitável. Na prova, a informação implícita pede o que se entende sem estar dito literalmente. Cuidado para não inventar. A dedução precisa ter base no texto. Se o texto não dá pistas, a conclusão é inválida. A diferença central é: explícita = está escrita; implícita = está sugerida.",
+            "examples": [
+              {
+                "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é das 8h às 12h. O que se pode inferir sobre o domingo?",
+                "solution": "O texto não cita domingo. Como a semana tem sete dias e apenas segunda a sábado são mencionados, pode-se inferir que no domingo a biblioteca não funciona ou não há atendimento informado.",
+                "explanation": "A inferência vem da ausência de informação sobre domingo combinada com a lista completa dos outros dias. É implícita porque não está escrita diretamente."
+              }
+            ]
+          },
+          {
+            "title": "Compreensão e interpretação",
+            "explanation": "Compreensão é entender o sentido literal do texto, captar o que foi dito de forma correta. É responder com base no conteúdo apresentado, seja explícito ou implícito. Interpretação é o passo seguinte: analisar, relacionar ideias e tirar conclusões a partir da compreensão. Na prova, compreensão costuma pedir ideia central, sinônimo, causa e consequência claras. Interpretação pede juízo, intenção do autor, tom e consequências não ditas. Separe as duas: primeiro garanta que você entendeu o que o texto diz, depois pense no que ele quer comunicar.",
+            "examples": [
+              {
+                "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é das 8h às 12h. Qual é a ideia central e o que o texto sugere sobre o uso no fim de semana?",
+                "solution": "Ideia central: informar os horários de funcionamento da biblioteca. Interpretação: o atendimento no sábado é mais curto, sugerindo menor demanda ou equipe reduzida no fim de semana.",
+                "explanation": "Compreensão identifica a ideia central literal. Interpretação conclui sobre a redução de horário no sábado, que não está dita mas é sugerida pela comparação."
+              }
+            ]
+          }
+        ],
+        "guidedPractice": [
+          {
+            "question": "Texto: O projeto de leitura começou em março e terminou em junho. Foram realizadas 12 oficinas. O que está explícito sobre a duração do projeto?",
+            "hint": "Procure meses e números escritos diretamente no texto.",
+            "answer": "O projeto começou em março e terminou em junho.",
+            "explanation": "A duração em meses está explícita. Não é preciso calcular dias, apenas localizar a informação escrita."
+          },
+          {
+            "question": "Com base no mesmo texto, o que pode ser inferido sobre a frequência das oficinas?",
+            "hint": "12 oficinas em 4 meses. O que isso sugere sem estar dito?",
+            "answer": "Pode-se inferir que houve em média 3 oficinas por mês.",
+            "explanation": "A média não está escrita, mas é uma dedução matemática a partir dos dados explícitos. É informação implícita."
+          },
+          {
+            "question": "Interprete: por que o autor pode ter informado o número de oficinas?",
+            "hint": "Pense na intenção comunicativa, não apenas no dado.",
+            "answer": "Para mostrar a intensidade ou o alcance do projeto.",
+            "explanation": "É interpretação porque avalia a intenção do autor ao incluir o dado, indo além do que está literalmente escrito."
+          }
+        ],
+        "commonMistakes": [
+          "Confundir opinião pessoal com informação implícita do texto",
+          "Responder questão de informação explícita com inferência",
+          "Misturar compreensão com interpretação e responder com conclusão sem base textual"
+        ],
+        "summary": [
+          "Informação explícita está escrita literalmente no texto",
+          "Informação implícita precisa ser deduzida a partir de pistas do texto",
+          "Compreensão é entender o que o texto diz",
+          "Interpretação é concluir a intenção e o sentido além do literal"
+        ]
+      }
+    }
+  ]
+}

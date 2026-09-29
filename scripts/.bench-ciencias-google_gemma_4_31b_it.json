@@ -1,0 +1,129 @@
+{
+  "case": "ciencias",
+  "promptChars": 3429,
+  "models": [
+    "google/gemma-4-31b-it"
+  ],
+  "repeats": 1,
+  "results": [
+    {
+      "case": "ciencias",
+      "model": "google/gemma-4-31b-it",
+      "attempt": 1,
+      "jsonModeWanted": true,
+      "probeJsonMode": null,
+      "ok": true,
+      "totalMs": 132289,
+      "requestMs": 132286,
+      "jsonOk": true,
+      "extractOk": true,
+      "validateOk": true,
+      "validateErrors": [],
+      "completionTokens": 1412,
+      "promptTokens": 947,
+      "finishReason": "stop",
+      "usedJsonMode": true,
+      "rawChars": 5293,
+      "rawPreview": null,
+      "counts": {
+        "objectives": 3,
+        "sections": 3,
+        "guidedPractice": 3,
+        "commonMistakes": 3,
+        "summary": 4,
+        "chars": 5293,
+        "words": 726
+      },
+      "quality": {
+        "subtopicos": "4/4",
+        "placeholders": true,
+        "inventou_nota": false,
+        "delegou_pesquisa": false,
+        "com_exemplo": true,
+        "exercicio_completo": true,
+        "resposta_explicada": false,
+        "markdown": false,
+        "html": false,
+        "acentos_ok": true
+      },
+      "lesson": {
+        "title": "Fundamentos da Matéria: Substâncias, Misturas e Estados Físicos",
+        "subject": "Ciências",
+        "topic": "matéria",
+        "estimatedMinutes": 55,
+        "objectives": [
+          "Diferenciar matéria de substância e identificar tipos de misturas",
+          "Compreender a composição de substâncias puras e misturas homogêneas e heterogêneas",
+          "Relacionar as mudanças de estado físico com a organização das partículas"
+        ],
+        "introduction": "Olá! Hoje vamos mergulhar no mundo da química básica. Você aprenderá que tudo ao seu redor é feito de matéria e que a forma como as partículas se organizam define se algo é uma substância pura, uma mistura ou se está no estado sólido, líquido ou gasoso. Esse conteúdo é a base para a prova da Etec, aparecendo tanto em questões diretas quanto em problemas de ecologia e biologia.",
+        "sections": [
+          {
+            "title": "Matéria e Substância",
+            "explanation": "Matéria é tudo aquilo que tem massa (quantidade de matéria) e ocupa lugar no espaço (volume). Já a substância é um tipo específico de matéria que possui composição química constante e propriedades definidas. Por exemplo, a água pura é uma substância porque, em qualquer lugar do mundo, ela é formada por dois átomos de hidrogênio e um de oxigênio. Quando falamos de matéria, estamos falando de forma geral; quando falamos de substância, estamos falando de pureza química.",
+            "examples": [
+              {
+                "problem": "O ar atmosférico e o ferro são exemplos de matéria. Qual deles pode ser classificado como uma substância pura?",
+                "solution": "O ferro.\nO ferro (Fe) é um elemento químico puro, enquanto o ar é composto por vários gases (nitrogênio, oxigênio, etc).",
+                "explanation": "O ferro mantém a mesma composição em toda a sua extensão, enquanto o ar varia dependendo da poluição ou altitude."
+              }
+            ]
+          },
+          {
+            "title": "Misturas Homogêneas e Heterogêneas",
+            "explanation": "Uma mistura ocorre quando juntamos duas ou mais substâncias sem que haja uma reação química entre elas. Elas se dividem em: Misturas Homogêneas, onde você não consegue distinguir os componentes a olho nu (apresentam apenas uma fase), como a água com açúcar dissolvido; e Misturas Heterogêneas, onde as fases são visíveis, como água e óleo. Fase é cada porção visualmente diferente de um sistema.",
+            "examples": [
+              {
+                "problem": "Se misturarmos areia e sal de cozinha em um copo, que tipo de mistura teremos?",
+                "solution": "Mistura Heterogênea.\nVocê conseguirá ver os grãos de sal e os grãos de areia separadamente.",
+                "explanation": "Como as duas substâncias não se dissolvem uma na outra, o sistema apresenta duas fases distintas."
+              }
+            ]
+          },
+          {
+            "title": "Estados Físicos da Matéria",
+            "explanation": "A matéria se apresenta principalmente em três estados: Sólido (partículas muito juntas e organizadas, volume e forma fixos), Líquido (partículas mais soltas, volume fixo mas forma variável conforme o recipiente) e Gasoso (partículas totalmente afastadas, volume e forma variáveis). As mudanças de estado ocorrem por variação de temperatura: Fusão (sólido para líquido), Vaporização (líquido para gasoso) e Solidificação (líquido para sólido).",
+            "examples": [
+              {
+                "problem": "Qual o nome do processo quando a água de uma poça desaparece em um dia ensolarado?",
+                "solution": "Vaporização (especificamente Evaporação).\nA água líquida passa para o estado gasoso devido ao calor do sol.",
+                "explanation": "O aumento da temperatura fornece energia para que as moléculas de água se afastem e virem vapor."
+              }
+            ]
+          }
+        ],
+        "guidedPractice": [
+          {
+            "question": "Uma pessoa prepara um café coado. O líquido final, onde o açúcar já foi dissolvido, é uma substância pura ou uma mistura?",
+            "hint": "Lembre-se que o café contém água, cafeína e açúcar.",
+            "answer": "Mistura Homogênea.",
+            "explanation": "É uma mistura porque tem várias substâncias, e é homogênea porque você não vê a separação entre elas."
+          },
+          {
+            "question": "Se você colocar um cubo de gelo em um copo e ele derreter, qual a mudança de estado físico ocorreu e como ficou a organização das partículas?",
+            "hint": "O gelo é sólido e a água é líquida.",
+            "answer": "Fusão. As partículas, que estavam organizadas e fixas, ganharam energia e passaram a deslizar umas sobre as outras.",
+            "explanation": "A fusão é a passagem do sólido para o líquido através do aquecimento."
+          },
+          {
+            "question": "Um sistema composto por água, gelo e óleo é considerado homogêneo ou heterogêneo? Quantas fases ele possui?",
+            "hint": "Conte cada estado físico e cada substância diferente que não se mistura.",
+            "answer": "Heterogêneo. Possui 3 fases.",
+            "explanation": "Fase 1: Gelo (sólido), Fase 2: Água (líquido), Fase 3: Óleo (líquido). Mesmo a água e o gelo sendo a mesma substância, estados diferentes contam como fases diferentes."
+          }
+        ],
+        "commonMistakes": [
+          "Confundir substância pura com mistura homogênea (ambas parecem iguais visualmente, mas a mistura tem mais de um componente).",
+          "Achar que a vaporização é a única forma de a água virar gás (existe a ebulição, que é rápida, e a evaporação, que é lenta).",
+          "Esquecer que a mesma substância em estados físicos diferentes (ex: água e gelo) forma um sistema heterogêneo."
+        ],
+        "summary": [
+          "Matéria tem massa e volume; substância é matéria com composição fixa e pura.",
+          "Misturas homogêneas têm 1 fase; misturas heterogêneas têm 2 ou mais fases.",
+          "Sólidos têm forma fixa, líquidos adaptam-se ao pote e gases ocupam todo o espaço.",
+          "Mudanças de estado (fusão, vaporização, solidificação) dependem da temperatura e energia das partículas."
+        ]
+      }
+    }
+  ]
+}

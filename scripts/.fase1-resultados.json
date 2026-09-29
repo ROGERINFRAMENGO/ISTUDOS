@@ -1,0 +1,891 @@
+[
+  {
+    "caso": "portugues",
+    "modelo": "meta/muse-glimmer-30b",
+    "rodada": 1,
+    "case": "portugues",
+    "model": "meta/muse-glimmer-30b",
+    "reportedModel": "meta/muse-glimmer-30b",
+    "attempt": 1,
+    "requestMs": 54548,
+    "rawLen": 7849,
+    "completionTokens": 1657,
+    "promptTokens": 930,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": true,
+    "validateErrors": [],
+    "rawContent": "{\"title\":\"Informação explícita e implícita: compreensão e interpretação\",\"objectives\":[\"Identificar informação explícita em um texto curto\",\"Distinguir informação implícita da explícita\",\"Aplicar compreensão literal e interpretação inferencial\"],\"introduction\":\"Você vai aprender a diferenciar o que o texto diz de forma direta do que precisa ser concluído. Em 55 minutos vamos trabalhar com textos curtos e objetivos, típicos da prova da Etec. Primeiro a informação explícita, depois a implícita, e por fim como usar compreensão e interpretação nas questões. Vamos passo a passo, com exemplos resolvidos e prática guiada.\",\"sections\":[{\"title\":\"Informação explícita\",\"explanation\":\"Informação explícita é o que está escrito de forma clara e direta no texto, sem precisar adivinhar. É o dado que você consegue apontar com o dedo na frase. Para localizar, faça perguntas de quem, o quê, quando, onde, como e por quê e procure a resposta literal no parágrafo. Não aceite sinônimo inventado, a resposta precisa estar nas palavras do autor. Essa habilidade é a base da compreensão literal e evita chute. Treinar a explicitação ajuda a não confundir opinião pessoal com fato do texto.\",\"examples\":[{\"probl",
+    "counts": {
+      "objectives": 3,
+      "sections": 3,
+      "guidedPractice": 3,
+      "commonMistakes": 3,
+      "summary": 4,
+      "chars": 5967,
+      "words": 856
+    },
+    "lesson": {
+      "title": "Informação explícita e implícita: compreensão e interpretação",
+      "subject": "Português",
+      "topic": "informação explícita",
+      "estimatedMinutes": 55,
+      "objectives": [
+        "Identificar informação explícita em um texto curto",
+        "Distinguir informação implícita da explícita",
+        "Aplicar compreensão literal e interpretação inferencial"
+      ],
+      "introduction": "Você vai aprender a diferenciar o que o texto diz de forma direta do que precisa ser concluído. Em 55 minutos vamos trabalhar com textos curtos e objetivos, típicos da prova da Etec. Primeiro a informação explícita, depois a implícita, e por fim como usar compreensão e interpretação nas questões. Vamos passo a passo, com exemplos resolvidos e prática guiada.",
+      "sections": [
+        {
+          "title": "Informação explícita",
+          "explanation": "Informação explícita é o que está escrito de forma clara e direta no texto, sem precisar adivinhar. É o dado que você consegue apontar com o dedo na frase. Para localizar, faça perguntas de quem, o quê, quando, onde, como e por quê e procure a resposta literal no parágrafo. Não aceite sinônimo inventado, a resposta precisa estar nas palavras do autor. Essa habilidade é a base da compreensão literal e evita chute. Treinar a explicitação ajuda a não confundir opinião pessoal com fato do texto.",
+          "examples": [
+            {
+              "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é apenas até as 12h. Qual é o horário de funcionamento na sexta-feira?",
+              "solution": "O texto diz que de segunda a sexta a biblioteca funciona das 7h às 18h. Sexta-feira está incluída nesse intervalo. Portanto o horário na sexta é das 7h às 18h.",
+              "explanation": "A informação está explícita na primeira frase. Não é preciso inferir, basta reconhecer que sexta faz parte de segunda a sexta."
+            }
+          ]
+        },
+        {
+          "title": "Informação implícita",
+          "explanation": "Informação implícita não está escrita diretamente, mas pode ser concluída a partir de pistas do texto. É uma inferência lógica, não um palpite. O leitor usa conhecimentos gerais e detalhes do texto para deduzir o que o autor sugere. Cuidado para não inventar: a conclusão precisa ser sustentada por evidências no texto. Informação implícita costuma aparecer em expressões como 'apesar de', 'por isso', 'consequentemente' e em descrições que indicam causa e efeito sem nomear.",
+          "examples": [
+            {
+              "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é apenas até as 12h. O que se pode inferir sobre o domingo?",
+              "solution": "Pode-se inferir que a biblioteca provavelmente está fechada no domingo, pois o texto cita funcionamento de segunda a sábado e não menciona domingo.",
+              "explanation": "O texto não diz 'fechado no domingo' de forma explícita. A inferência vem da ausência de menção e do padrão de funcionamento em dias úteis e meio período no sábado."
+            }
+          ]
+        },
+        {
+          "title": "Compreensão e interpretação",
+          "explanation": "Compreensão é entender o sentido literal do texto, responder o que está dito de forma direta ou reorganizada. Interpretação é ir além, relacionar ideias, identificar intenção, tom e consequências implícitas. Na prova da Etec, questões de compreensão pedem paráfrase do explícito. Questões de interpretação pedem conclusão lógica do implícito. Para acertar, primeiro localize a evidência no texto e depois explique a relação lógica. Ao marcar alternativa, justifique por que a correta se sustenta e por que as demais não.",
+          "examples": [
+            {
+              "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. No sábado, o atendimento é apenas até as 12h. Qual alternativa interpreta corretamente o texto? A) A biblioteca abre todos os dias. B) O sábado tem horário reduzido. C) A biblioteca fecha às 18h no sábado. D) O domingo tem atendimento especial.",
+              "solution": "Alternativa correta é B. O texto diz que no sábado o atendimento é apenas até as 12h, enquanto de segunda a sexta vai até 18h, logo o sábado tem horário reduzido. A está errada porque domingo não é citado. C está errada porque 18h é de segunda a sexta. D está errada porque não há menção a domingo.",
+              "explanation": "Compreensão identifica o horário reduzido. Interpretação reconhece a comparação entre dias e elimina alternativas sem apoio textual."
+            }
+          ]
+        }
+      ],
+      "guidedPractice": [
+        {
+          "question": "Texto: O projeto de reciclagem começou em março e já coletou 200 kg de papel. A meta era 150 kg. O que está explícito sobre a meta?",
+          "hint": "Procure o número da meta escrito literalmente.",
+          "answer": "A meta era 150 kg.",
+          "explanation": "Informação explícita: o texto diz literalmente 'A meta era 150 kg'. Não é inferência."
+        },
+        {
+          "question": "Texto: O projeto de reciclagem começou em março e já coletou 200 kg de papel. A meta era 150 kg. O que está implícito sobre o resultado?",
+          "hint": "Compare 200 kg coletados com 150 kg da meta.",
+          "answer": "O projeto superou a meta.",
+          "explanation": "Implícito: o texto não diz 'superou', mas 200 kg > 150 kg permite concluir que a meta foi ultrapassada."
+        },
+        {
+          "question": "Texto: O projeto de reciclagem começou em março e já coletou 200 kg de papel. A meta era 150 kg. Interprete: por que o autor pode ter citado a data de início?",
+          "hint": "Pense na relação entre tempo curto e quantidade coletada.",
+          "answer": "Para sugerir que o resultado foi rápido ou eficiente.",
+          "explanation": "Interpretação: março até o momento atual é pouco tempo e já coletaram mais que a meta, indicando eficiência. É conclusão sustentada, não dita literalmente."
+        }
+      ],
+      "commonMistakes": [
+        "Confundir opinião pessoal com informação explícita do texto",
+        "Achar que informação implícita é chute sem base textual",
+        "Responder interpretação com apenas cópia literal da frase"
+      ],
+      "summary": [
+        "Informação explícita é o que o texto diz diretamente e pode ser localizado na frase.",
+        "Informação implícita precisa ser inferida com base em pistas do texto e conhecimento geral.",
+        "Compreensão trabalha o sentido literal e a paráfrase do que está dito.",
+        "Interpretação exige conclusão lógica sustentada pelo texto e elimina alternativas sem evidência."
+      ]
+    }
+  },
+  {
+    "caso": "portugues",
+    "modelo": "meta/muse-glimmer-30b",
+    "rodada": 2,
+    "case": "portugues",
+    "model": "meta/muse-glimmer-30b",
+    "reportedModel": "meta/muse-glimmer-30b",
+    "attempt": 1,
+    "requestMs": 90009,
+    "rawLen": 7277,
+    "completionTokens": 1555,
+    "promptTokens": 930,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": true,
+    "validateErrors": [],
+    "rawContent": "{\"title\":\"Informação explícita e implícita: compreensão e interpretação\",\"objectives\":[\"Identificar informação explícita em um texto curto\",\"Diferenciar informação implícita da explícita\",\"Aplicar compreensão e interpretação em questões de prova\"],\"introduction\":\"Hoje você vai treinar leitura com foco em prova. Primeiro vamos ver o que o texto diz de forma direta, depois o que ele sugere sem escrever. A diferença entre compreensão, que é entender o que está dito, e interpretação, que é concluir a partir do que está dito, é o ponto que mais cai na Etec. Vamos avançar passo a passo com exemplos curtos e objetivos.\",\"sections\":[{\"title\":\"Informação explícita\",\"explanation\":\"Informação explícita é o dado que o texto apresenta de forma direta, clara e objetiva, sem precisar deduzir. É o que está escrito literalmente, como nome, data, número, definição ou afirmação. Para localizar, procure por verbos de afirmação e por detalhes concretos. Não é preciso imaginar nada, basta reler a frase. Na prova, a alternativa correta de informação explícita pode ser copiada com outras palavras do próprio texto.\",\"examples\":[{\"problem\":\"Texto: A biblioteca da escola funciona de segunda a sexta, das 7h à",
+    "counts": {
+      "objectives": 3,
+      "sections": 3,
+      "guidedPractice": 3,
+      "commonMistakes": 3,
+      "summary": 4,
+      "chars": 5418,
+      "words": 760
+    },
+    "lesson": {
+      "title": "Informação explícita e implícita: compreensão e interpretação",
+      "subject": "Português",
+      "topic": "informação explícita",
+      "estimatedMinutes": 55,
+      "objectives": [
+        "Identificar informação explícita em um texto curto",
+        "Diferenciar informação implícita da explícita",
+        "Aplicar compreensão e interpretação em questões de prova"
+      ],
+      "introduction": "Hoje você vai treinar leitura com foco em prova. Primeiro vamos ver o que o texto diz de forma direta, depois o que ele sugere sem escrever. A diferença entre compreensão, que é entender o que está dito, e interpretação, que é concluir a partir do que está dito, é o ponto que mais cai na Etec. Vamos avançar passo a passo com exemplos curtos e objetivos.",
+      "sections": [
+        {
+          "title": "Informação explícita",
+          "explanation": "Informação explícita é o dado que o texto apresenta de forma direta, clara e objetiva, sem precisar deduzir. É o que está escrito literalmente, como nome, data, número, definição ou afirmação. Para localizar, procure por verbos de afirmação e por detalhes concretos. Não é preciso imaginar nada, basta reler a frase. Na prova, a alternativa correta de informação explícita pode ser copiada com outras palavras do próprio texto.",
+          "examples": [
+            {
+              "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. Em 2024, foram emprestados 1.200 livros. Qual informação está explícita?",
+              "solution": "A biblioteca funciona de segunda a sexta, das 7h às 18h, e em 2024 foram emprestados 1.200 livros.",
+              "explanation": "Essas duas informações aparecem escritas literalmente no texto. Não houve inferência, apenas reprodução do que foi dito."
+            }
+          ]
+        },
+        {
+          "title": "Informação implícita",
+          "explanation": "Informação implícita é o sentido que não está escrito diretamente, mas pode ser concluído a partir de pistas do texto. É uma inferência lógica. O leitor precisa juntar dados explícitos e usar conhecimento geral. Por exemplo, se o texto diz que a biblioteca fecha às 18h, está implícito que não funciona à noite. Cuidado para não inventar: a inferência precisa ter base no texto, não em opinião pessoal.",
+          "examples": [
+            {
+              "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. Em 2024, foram emprestados 1.200 livros. O que pode ser inferido?",
+              "solution": "Pode-se inferir que a biblioteca não funciona aos sábados e domingos, nem à noite.",
+              "explanation": "O texto explicita o funcionamento de segunda a sexta e das 7h às 18h. Logo, implícito é que fora desse período ela está fechada. Isso é conclusão, não cópia literal."
+            }
+          ]
+        },
+        {
+          "title": "Compreensão e interpretação",
+          "explanation": "Compreensão é entender o que o texto diz, tanto o explícito quanto o implícito, de forma correta. Interpretação é ir além, explicando o sentido, a intenção ou a consequência do que foi dito. Na prova, compreensão costuma pedir a ideia central ou o resumo fiel. Interpretação pede conclusão, finalidade ou tom. Separe as duas: compreensão responde com base no texto; interpretação justifica por que o texto foi escrito assim.",
+          "examples": [
+            {
+              "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. Em 2024, foram emprestados 1.200 livros. Qual a finalidade do texto e o que ele permite concluir?",
+              "solution": "Compreensão: o texto informa horário e número de empréstimos. Interpretação: a finalidade é informar o público e a alta quantidade de empréstimos sugere uso intenso da biblioteca.",
+              "explanation": "Compreensão reproduz as ideias do texto. Interpretação conclui que o texto tem caráter informativo e que 1.200 empréstimos indicam uso frequente, o que não está escrito literalmente."
+            }
+          ]
+        }
+      ],
+      "guidedPractice": [
+        {
+          "question": "Texto: O museu abre às terças e quintas, das 9h às 17h. A entrada é gratuita para estudantes. Qual alternativa traz informação explícita? a) O museu valoriza a educação b) O museu abre às terças e quintas das 9h às 17h c) O museu deve fechar aos finais de semana d) A entrada é paga para adultos",
+          "hint": "Procure o que está escrito literalmente, sem conclusão.",
+          "answer": "b) O museu abre às terças e quintas das 9h às 17h",
+          "explanation": "A alternativa b repete o texto. a é interpretação, c é inferência não confirmada, d não está dito."
+        },
+        {
+          "question": "Com base no mesmo texto, qual informação é implícita?",
+          "hint": "O que pode ser concluído a partir do horário informado?",
+          "answer": "O museu não abre às segundas, quartas, sextas, sábados e domingos, nem fora do horário das 9h às 17h.",
+          "explanation": "O texto só cita terças e quintas. Implícito é que nos outros dias ele está fechado. É inferência segura."
+        },
+        {
+          "question": "Qual a diferença entre compreensão e interpretação nesse caso?",
+          "hint": "Compreensão é o que o texto diz; interpretação é o que se conclui sobre a intenção.",
+          "answer": "Compreensão: o museu abre em dois dias da semana e a entrada é gratuita para estudantes. Interpretação: o museu busca incentivar a visita de estudantes.",
+          "explanation": "A primeira parte resume o dito. A segunda explica a provável intenção, que não está escrita."
+        }
+      ],
+      "commonMistakes": [
+        "Confundir informação implícita com opinião pessoal sem base no texto",
+        "Achar que compreensão e interpretação são a mesma coisa",
+        "Marcar alternativa explícita que na verdade é uma inferência exagerada"
+      ],
+      "summary": [
+        "Informação explícita está escrita diretamente no texto",
+        "Informação implícita precisa ser inferida a partir de pistas",
+        "Compreensão é entender o que o texto diz",
+        "Interpretação é concluir sentido, intenção ou consequência"
+      ]
+    }
+  },
+  {
+    "caso": "portugues",
+    "modelo": "meta/muse-glimmer-30b",
+    "rodada": 3,
+    "case": "portugues",
+    "model": "meta/muse-glimmer-30b",
+    "reportedModel": "meta/muse-glimmer-30b",
+    "attempt": 1,
+    "requestMs": 31773,
+    "rawLen": 7694,
+    "completionTokens": 1572,
+    "promptTokens": 930,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": true,
+    "validateErrors": [],
+    "rawContent": "{\"title\":\"Informação explícita e implícita: compreensão e interpretação\",\"objectives\":[\"Identificar informação explícita em um texto curto\",\"Diferenciar informação implícita da explícita\",\"Aplicar compreensão e interpretação em questões de múltipla escolha\"],\"introduction\":\"Hoje vamos treinar leitura com foco em achar o que o texto diz de forma direta e o que precisa ser concluído. A prova da Etec cobra muito essa diferença. Vamos começar do básico e subir um degrau por vez, sempre explicando o porquê de cada resposta.\",\"sections\":[{\"title\":\"Informação explícita\",\"explanation\":\"Informação explícita é o que está escrito de forma clara, literal, sem precisar adivinhar. É o dado que você encontra copiando com suas palavras, mas sem acrescentar nada. Para localizar, procure verbos de ação, datas, números, nomes próprios e frases afirmativas diretas. Não interprete, apenas registre o que o autor deixou visível. Essa é a base da compreensão literal e costuma ser a primeira etapa de qualquer questão.\",\"examples\":[{\"problem\":\"Texto: A escola inicia as aulas em 10 de fevereiro. A primeira semana é de acolhimento e não haverá provas. Leia e aponte a informação explícita.\",\"solution\":\"A escol",
+    "counts": {
+      "objectives": 3,
+      "sections": 3,
+      "guidedPractice": 3,
+      "commonMistakes": 3,
+      "summary": 4,
+      "chars": 4984,
+      "words": 684
+    },
+    "lesson": {
+      "title": "Informação explícita e implícita: compreensão e interpretação",
+      "subject": "Português",
+      "topic": "informação explícita",
+      "estimatedMinutes": 55,
+      "objectives": [
+        "Identificar informação explícita em um texto curto",
+        "Diferenciar informação implícita da explícita",
+        "Aplicar compreensão e interpretação em questões de múltipla escolha"
+      ],
+      "introduction": "Hoje vamos treinar leitura com foco em achar o que o texto diz de forma direta e o que precisa ser concluído. A prova da Etec cobra muito essa diferença. Vamos começar do básico e subir um degrau por vez, sempre explicando o porquê de cada resposta.",
+      "sections": [
+        {
+          "title": "Informação explícita",
+          "explanation": "Informação explícita é o que está escrito de forma clara, literal, sem precisar adivinhar. É o dado que você encontra copiando com suas palavras, mas sem acrescentar nada. Para localizar, procure verbos de ação, datas, números, nomes próprios e frases afirmativas diretas. Não interprete, apenas registre o que o autor deixou visível. Essa é a base da compreensão literal e costuma ser a primeira etapa de qualquer questão.",
+          "examples": [
+            {
+              "problem": "Texto: A escola inicia as aulas em 10 de fevereiro. A primeira semana é de acolhimento e não haverá provas. Leia e aponte a informação explícita.",
+              "solution": "A escola inicia as aulas em 10 de fevereiro e a primeira semana é de acolhimento sem provas.",
+              "explanation": "A informação está escrita diretamente no texto. Não precisamos inferir nada. A data 10 de fevereiro e a ausência de provas na primeira semana são fatos declarados pelo autor."
+            }
+          ]
+        },
+        {
+          "title": "Informação implícita",
+          "explanation": "Informação implícita não aparece escrita de forma direta, mas pode ser deduzida a partir de pistas do texto. É uma conclusão lógica que o leitor constrói usando contexto, linguagem e conhecimento geral. O autor não diz exatamente, mas sugere. Cuidado para não inventar: a inferência precisa ter apoio no texto. Se não houver pista, não é implícito, é suposição.",
+          "examples": [
+            {
+              "problem": "Texto: A escola inicia as aulas em 10 de fevereiro. A primeira semana é de acolhimento e não haverá provas. O que se pode inferir implicitamente?",
+              "solution": "Na primeira semana os alunos não precisam estudar para prova.",
+              "explanation": "O texto não diz 'não precisam estudar', mas afirma que não haverá provas. A partir disso inferimos que não há necessidade de estudo para avaliação nessa semana. A inferência tem base textual."
+            }
+          ]
+        },
+        {
+          "title": "Compreensão e interpretação",
+          "explanation": "Compreensão é entender o que o texto diz, tanto explícito quanto implícito, de forma correta. Interpretação é o passo seguinte: relacionar o texto com sentido, intenção do autor e contexto, tirando conclusões justificadas. Na prova, compreensão responde o que está no texto. Interpretação responde o que o texto quer dizer. Sempre justifique a alternativa correta e explique por que as outras estão erradas.",
+          "examples": [
+            {
+              "problem": "Texto: A escola inicia as aulas em 10 de fevereiro. A primeira semana é de acolhimento e não haverá provas. Qual alternativa interpreta corretamente o texto? A) A escola começa em março. B) A primeira semana tem foco em adaptação, não em avaliação. C) Haverá provas na primeira semana. D) O acolhimento acontece depois das provas.",
+              "solution": "Alternativa correta é B. A primeira semana tem foco em adaptação, não em avaliação.",
+              "explanation": "B está correta porque acolhimento indica adaptação e o texto diz que não haverá provas. A está errada porque a data é 10 de fevereiro. C está errada porque o texto afirma que não haverá provas. D está errada porque o acolhimento é na primeira semana, antes de qualquer prova."
+            }
+          ]
+        }
+      ],
+      "guidedPractice": [
+        {
+          "question": "Texto: O livro tem 200 páginas e foi lido em 4 dias. Qual informação é explícita?",
+          "hint": "Procure dado literal, sem conclusão.",
+          "answer": "O livro tem 200 páginas e foi lido em 4 dias.",
+          "explanation": "São informações declaradas diretamente. Não precisamos calcular nem inferir."
+        },
+        {
+          "question": "Com base no mesmo texto, o que é implícito?",
+          "hint": "Pense no que se deduz da quantidade de páginas e dias.",
+          "answer": "A pessoa leu em média 50 páginas por dia.",
+          "explanation": "O texto não diz a média, mas 200 páginas em 4 dias permite calcular 50 por dia. É inferência apoiada."
+        },
+        {
+          "question": "Interprete: Por que o autor pode ter informado o número de páginas e dias?",
+          "hint": "Interpretação busca intenção ou sentido.",
+          "answer": "Para mostrar ritmo de leitura ou rapidez.",
+          "explanation": "Compreensão registra os números. Interpretação sugere que o autor quer destacar velocidade ou constância na leitura."
+        }
+      ],
+      "commonMistakes": [
+        "Confundir opinião pessoal com informação implícita",
+        "Achar que informação explícita precisa ser copiada igual ao texto",
+        "Escolher alternativa de interpretação sem apoio no texto"
+      ],
+      "summary": [
+        "Informação explícita é literal e visível no texto",
+        "Informação implícita é deduzida com base em pistas",
+        "Compreensão é entender o dito e o implícito",
+        "Interpretação é justificar sentido com base no texto"
+      ]
+    }
+  },
+  {
+    "caso": "portugues",
+    "modelo": "google/diffusiongemma-26b-a4b-it",
+    "rodada": 1,
+    "case": "portugues",
+    "model": "google/diffusiongemma-26b-a4b-it",
+    "reportedModel": "google/diffusiongemma-26b-a4b-it",
+    "attempt": 1,
+    "requestMs": 10124,
+    "rawLen": 5342,
+    "completionTokens": 1200,
+    "promptTokens": 974,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": true,
+    "validateErrors": [],
+    "rawContent": "{\n\"title\":\"Domine a Leitura: Informação Explícita, Implícita, Compreensão e Interpretação\",\n\"objectives\": [\n\"Diferenciar informações explícitas de implícitas em textos diversos\",\n\"Compreender a diferença prática entre compreensão e interpretação de textos\",\n\"Aplicar esses conceitos na resolução de questões de nível prova da Etec\"\n],\n\"introduction\": \"Olá! Hoje vamos dominar a leitura de textos para a prova da Etec. Você aprenderá a identificar o que o texto diz de forma clara e o que ele esconde 'nas entrelinhas'. Vamos passo a passo para que você nunca mais perca uma questão por falta de interpretação de texto.\",\n\"sections\": [\n{\n\"title\": \"Informação Explícita: O que está na cara\",\n\"explanation\": \"A informação explícita é aquela que está escrita de forma clara e direta no texto. Você não precisa adivinhar nada para encontrá-la; basta ler com atenção. É o dado literal, o fato ou a característica que o autor colocou no papel. Nas provas, as questões costumam pedir: 'Segundo o texto...' ou 'Onde o personagem...'.\",\n\"examples\": [\n{\n\"problem\": \"Na frase 'Maria comprou uma maçã verde na feira de domingo', qual é a informação sobre a cor da fruta comprada?\",\n\"solution\": \"A cor da maçã é ve",
+    "counts": {
+      "objectives": 3,
+      "sections": 3,
+      "guidedPractice": 3,
+      "commonMistakes": 3,
+      "summary": 4,
+      "chars": 4431,
+      "words": 598
+    },
+    "lesson": {
+      "title": "Domine a Leitura: Informação Explícita, Implícita, Compreensão e Interpretação",
+      "subject": "Português",
+      "topic": "informação explícita",
+      "estimatedMinutes": 55,
+      "objectives": [
+        "Diferenciar informações explícitas de implícitas em textos diversos",
+        "Compreender a diferença prática entre compreensão e interpretação de textos",
+        "Aplicar esses conceitos na resolução de questões de nível prova da Etec"
+      ],
+      "introduction": "Olá! Hoje vamos dominar a leitura de textos para a prova da Etec. Você aprenderá a identificar o que o texto diz de forma clara e o que ele esconde 'nas entrelinhas'. Vamos passo a passo para que você nunca mais perca uma questão por falta de interpretação de texto.",
+      "sections": [
+        {
+          "title": "Informação Explícita: O que está na cara",
+          "explanation": "A informação explícita é aquela que está escrita de forma clara e direta no texto. Você não precisa adivinhar nada para encontrá-la; basta ler com atenção. É o dado literal, o fato ou a característica que o autor colocou no papel. Nas provas, as questões costumam pedir: 'Segundo o texto...' ou 'Onde o personagem...'.",
+          "examples": [
+            {
+              "problem": "Na frase 'Maria comprou uma maçã verde na feira de domingo', qual é a informação sobre a cor da fruta comprada?",
+              "solution": "A cor da maçã é verde.",
+              "explanation": "O texto afirma explicitamente que a maçã é verde, sem necessidade de interpretação."
+            }
+          ]
+        },
+        {
+          "title": "Informação Implícita: Lendo as entrelinhas",
+          "explanation": "A informação implícita é aquela que não está escrita, mas que podemos deduzir a partir de pistas deixadas pelo texto. É a inferência: você usa seu conhecimento de mundo para completar o que o autor quis dizer. Se o texto diz 'João saiu de casa com o guarda-chuva aberto', a informação implícita é que estava chovendo, embora a palavra chuva não apareça lá.",
+          "examples": [
+            {
+              "problem": "'João saiu de casa fechando o guarda-chuva ao ver as nuvens escuras'. O que se pode deduzir?",
+              "solution": "Vai chover ou já está começando a chover.",
+              "explanation": "Nuvens escuras e guarda-chuva são pistas que levam à dedução lógica da chuva."
+            }
+          ]
+        },
+        {
+          "title": "Compreensão vs. Interpretação",
+          "explanation": "Compreender é entender o que o texto diz (o conteúdo literal). É a análise do que está escrito. Interpretar é entender o que se conclui a partir do texto (o sentido maior). Na prova, as questões de compreensão perguntam 'O texto afirma que...'. Já as de interpretação perguntam 'Conclui-se do texto que...' ou 'O autor sugere que...'.",
+          "examples": [
+            {
+              "problem": "Texto: 'O aluno estudou a noite inteira para a prova da Etec'. O que se entende sobre seu empenho (Interpretação)?",
+              "solution": "O aluno está interessado ou preocupado.",
+              "explanation": "A compreensão é que ele estudou. A interpretação é a dedução do que esse esforço significa."
+            }
+          ]
+        }
+      ],
+      "guidedPractice": [
+        {
+          "question": "Texto: 'A luz estava acesa, mas a casa estava silenciosa e não havia carros na garagem'. Qual a informação explícita sobre a casa?",
+          "hint": "Procure o que o texto afirma diretamente sobre o estado da casa.",
+          "answer": "A casa estava silenciosa.",
+          "explanation": "A resposta está correta porque o texto diz exatamente isso: 'mas a casa estava silenciosa'."
+        },
+        {
+          "question": "Texto: 'Após correr a maratona, Lucas mal conseguia falar e buscava muita água'. Qual a informação implícita?",
+          "hint": "O que acontece com o corpo após um esforço físico extremo?",
+          "answer": "Lucas estava muito cansado.",
+          "explanation": "O texto não diz 'estava cansado', mas o esforço físico e a dificuldade de falar permitem essa dedução."
+        },
+        {
+          "question": "Texto: 'A tecnologia aproxima quem está longe, mas pode isolar quem está ao lado'. Qual a interpretação correta de essa afirmação?",
+          "hint": "O que o autor quer dizer sobre o impacto da tecnologia nas relações?",
+          "answer": "A tecnologia tem lados positivos e negativos.",
+          "explanation": "O texto mostra um contraste (aproxima vs. isola), indicando uma dualidade no fenômeno."
+        }
+      ],
+      "commonMistakes": [
+        "Confundir interpretação (o que eu acho) com compreensão (o que o texto realmente diz).",
+        "Ignorar as pistas implícitas e tentar responder apenas com o que é óbvio.",
+        "Responder questões de informação explícita baseada em opiniões pessoais, em vez de buscar o texto."
+      ],
+      "summary": [
+        "Informação explícita é literal, o que está escrito claramente no texto.",
+        "Informação implícita é a dedução baseada em pistas (inferência).",
+        "Compreensão foca no conteúdo escrito e direto.",
+        "Interpretação foca nas conclusões e sentidos além do texto escrito."
+      ]
+    }
+  },
+  {
+    "caso": "portugues",
+    "modelo": "google/diffusiongemma-26b-a4b-it",
+    "rodada": 2,
+    "case": "portugues",
+    "model": "google/diffusiongemma-26b-a4b-it",
+    "reportedModel": "google/diffusiongemma-26b-a4b-it",
+    "attempt": 1,
+    "requestMs": 6782,
+    "rawLen": 5622,
+    "completionTokens": 1232,
+    "promptTokens": 974,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": true,
+    "validateErrors": [],
+    "rawContent": "{\n\"title\":\"Domine a Leitura: Informação Explícita, Implícita, Compreensão e Interpretação\",\n\"objectives\": [\n\"Diferenciar informações explícitas de implícitas em textos\",\n\"Compreender a diferença entre compreensão e interpretação de textos\",\n\"Aplicar técnicas de leitura para resolver questões de nível vestibular (Etec)\"\n],\n\"introduction\": \"Olá! Hoje vamos dominar as habilidades essenciais para a sua prova da Etec. Você aprenderá a identificar o que o texto diz de forma clara e o que ele esconde nas entrelinhas. Vamos do básico ao nível mais avançado para garantir que você não perca nenhuma questão de interpretação de texto.\",\n\"sections\": [\n  {\n    \"title\": \"Informação Explícita: O que está escrito\",\n    \"explanation\": \"A informação explícita é aquela que aparece de forma direta e clara no texto. Você não precisa 'adivinhar', basta ler e encontrar o dado, o nome ou a característica escrita de forma literal. Quando a prova pergunta 'Segundo o texto' ou 'O autor afirma que', ela está buscando uma informação explícita. É a base de qualquer leitura, pois exige atenção aos detalhes apresentados.\",\n    \"examples\": [\n      {\n        \"problem\": \"No texto 'O carro azul de Pedro estacionou na ",
+    "counts": {
+      "objectives": 3,
+      "sections": 3,
+      "guidedPractice": 3,
+      "commonMistakes": 3,
+      "summary": 4,
+      "chars": 4469,
+      "words": 586
+    },
+    "lesson": {
+      "title": "Domine a Leitura: Informação Explícita, Implícita, Compreensão e Interpretação",
+      "subject": "Português",
+      "topic": "informação explícita",
+      "estimatedMinutes": 55,
+      "objectives": [
+        "Diferenciar informações explícitas de implícitas em textos",
+        "Compreender a diferença entre compreensão e interpretação de textos",
+        "Aplicar técnicas de leitura para resolver questões de nível vestibular (Etec)"
+      ],
+      "introduction": "Olá! Hoje vamos dominar as habilidades essenciais para a sua prova da Etec. Você aprenderá a identificar o que o texto diz de forma clara e o que ele esconde nas entrelinhas. Vamos do básico ao nível mais avançado para garantir que você não perca nenhuma questão de interpretação de texto.",
+      "sections": [
+        {
+          "title": "Informação Explícita: O que está escrito",
+          "explanation": "A informação explícita é aquela que aparece de forma direta e clara no texto. Você não precisa 'adivinhar', basta ler e encontrar o dado, o nome ou a característica escrita de forma literal. Quando a prova pergunta 'Segundo o texto' ou 'O autor afirma que', ela está buscando uma informação explícita. É a base de qualquer leitura, pois exige atenção aos detalhes apresentados.",
+          "examples": [
+            {
+              "problem": "No texto 'O carro azul de Pedro estacionou na garagem', qual a cor do carro?",
+              "solution": "A cor do carro é azul.",
+              "explanation": "A resposta está escrita diretamente na primeira frase, sem necessidade de raciocínio extra."
+            }
+          ]
+        },
+        {
+          "title": "Informação Implícita: Lendo as entrelinhas",
+          "explanation": "A informação implícita é aquela que não está escrita claramente, mas pode ser deduzida a partir de pistas deixadas pelo autor. É o que chamamos de inferência (uma conclusão lógica). Por exemplo, se o texto diz que 'João saiu com um guarda-chuva', a informação implícita é de que está chovendo, embora a palavra 'chuva' não apareça. Você conecta as pistas do texto com seu conhecimento de mundo.",
+          "examples": [
+            {
+              "problem": "Maria saiu de casa correndo e olhou o relógio. Ela estava atrasada?",
+              "solution": "Sim, ela estava atrasada.",
+              "explanation": "Correr e olhar o relógio são comportamentos que indicam pressa e atraso lógico."
+            }
+          ]
+        },
+        {
+          "title": "Compreensão vs. Interpretação",
+          "explanation": "Compreender é entender o que o texto realmente diz (informação explícita). É um trabalho de análise direta. Interpretar é tirar conclusões a partir do texto (informação implícita). Na prova da Etec, a compreensão foca no que está no papel, enquanto a interpretação exige que você analise a intenção do autor ou as consequências de algo dito. Saber distinguir as duas evita que você invente respostas que o texto não deu.",
+          "examples": [
+            {
+              "problem": "Texto: 'O uso de plástico diminuiu 20%'. O que se conclui?",
+              "solution": "Houve uma melhora na consciência ou redução no consumo desse material.",
+              "explanation": "A compreensão é que o uso caiu; a interpretação conclui que houve uma mudança positiva de hábito."
+            }
+          ]
+        }
+      ],
+      "guidedPractice": [
+        {
+          "question": "Texto: 'O sol estava tão forte que as crianças buscavam sombra nas árvores'. O que elas faziam?",
+          "hint": "Procure o verbo que descreve a ação das crianças.",
+          "answer": "Buscavam sombra nas árvores.",
+          "explanation": "Esta é uma informação explícita, pois o texto afirma claramente que elas buscavam a sombra."
+        },
+        {
+          "question": "Texto: 'Após ver o resultado da prova, Lucas fechou o caderno e deu um sorriso'. O que podemos deduzir sobre Lucas?",
+          "hint": "O que geralmente acontece quando alguém sorri após uma prova?",
+          "answer": "Lucas tirou uma nota boa.",
+          "explanation": "É uma informação implícita. O texto não diz 'ele tirou10', mas o sorriso sugere sucesso."
+        },
+        {
+          "question": "Texto: 'A tecnologia aproximou pessoas distantes, mas isolou quem estava ao lado'. Qual a interpretação correta?",
+          "hint": "O texto apresenta dois lados da mesma moeda. Qual a conclusão geral?",
+          "answer": "A tecnologia tem efeitos ambivalentes e complexos nas relações sociais.",
+          "explanation": "A interpretação sintetiza as ideias opostas (aproximação vs. isolamento) apresentadas."
+        }
+      ],
+      "commonMistakes": [
+        "Confundir a sua opinião pessoal com o que o texto realmente diz (extrapolação).",
+        "Tentar achar informações implícitas onde não existem pistas de texto que sustentem a conclusão.",
+        "Ignorar detalhes explícitos ao tentar interpretar o texto de forma complexa demais."
+      ],
+      "summary": [
+        "Informação explícita é literal e está visível no texto.",
+        "Informação implícita é deduzida baseada em pistas do autor.",
+        "Compreensão foca no que o texto afirma de fato.",
+        "Interpretação foca no que o texto sugere ou permite concluir."
+      ]
+    }
+  },
+  {
+    "caso": "portugues",
+    "modelo": "google/diffusiongemma-26b-a4b-it",
+    "rodada": 3,
+    "case": "portugues",
+    "model": "google/diffusiongemma-26b-a4b-it",
+    "reportedModel": "google/diffusiongemma-26b-a4b-it",
+    "attempt": 1,
+    "requestMs": 7414,
+    "rawLen": 5442,
+    "completionTokens": 1186,
+    "promptTokens": 974,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": true,
+    "validateErrors": [],
+    "rawContent": "{\n\"title\":\"Dominando o Texto: Informação Explícita, Implícita, Compreensão e Interpretação\",\n\"objectives\": [\n\"Diferenciar informações explícitas de implícitas em textos diversos.\",\n\"Distinguir o ato de compreender do ato de interpretar uma produção textual.\",\n\"Aplicar técnicas de leitura para resolver questões de nível vestibular (Etec).\"\n],\n\"introduction\": \"Olá! Hoje vamos dominar as habilidades essenciais para a prova da Etec. Você aprenderá a identificar o que o texto diz de forma clara e o que ele esconde nas entrelinhas. Vamos passar do mais simples ao mais complexo, garantindo que você nunca mais erre uma questão básica de leitura.\",\n\"sections\": [\n{\n\"title\": \"Informação Explícita e Compreensão\",\n\"explanation\": \"A informação explícita é aquela que está escrita de forma clara e direta no texto. Você não precisa adivinhar nada, basta ler e encontrar. Já a compreensão é o ato de entender o que o autor escreveu literalmente. É decodificar a mensagem de forma objet. Se a pergunta pede 'o que o personagem fez', a resposta está lá no papel.\",\n\"examples\": [\n{\n\"problem\": \"No texto: 'Maria comprou uma maçã verde no mercado ontem'. O que Maria comprou?\",\n\"solution\": \"Maria comprou uma ma",
+    "counts": {
+      "objectives": 3,
+      "sections": 3,
+      "guidedPractice": 3,
+      "commonMistakes": 3,
+      "summary": 4,
+      "chars": 4531,
+      "words": 608
+    },
+    "lesson": {
+      "title": "Dominando o Texto: Informação Explícita, Implícita, Compreensão e Interpretação",
+      "subject": "Português",
+      "topic": "informação explícita",
+      "estimatedMinutes": 55,
+      "objectives": [
+        "Diferenciar informações explícitas de implícitas em textos diversos.",
+        "Distinguir o ato de compreender do ato de interpretar uma produção textual.",
+        "Aplicar técnicas de leitura para resolver questões de nível vestibular (Etec)."
+      ],
+      "introduction": "Olá! Hoje vamos dominar as habilidades essenciais para a prova da Etec. Você aprenderá a identificar o que o texto diz de forma clara e o que ele esconde nas entrelinhas. Vamos passar do mais simples ao mais complexo, garantindo que você nunca mais erre uma questão básica de leitura.",
+      "sections": [
+        {
+          "title": "Informação Explícita e Compreensão",
+          "explanation": "A informação explícita é aquela que está escrita de forma clara e direta no texto. Você não precisa adivinhar nada, basta ler e encontrar. Já a compreensão é o ato de entender o que o autor escreveu literalmente. É decodificar a mensagem de forma objet. Se a pergunta pede 'o que o personagem fez', a resposta está lá no papel.",
+          "examples": [
+            {
+              "problem": "No texto: 'Maria comprou uma maçã verde no mercado ontem'. O que Maria comprou?",
+              "solution": "Maria comprou uma maçã verde.",
+              "explanation": "A resposta é explícita, pois aparece exatamente assim na frase, sem necessidade de raciocínio extra."
+            }
+          ]
+        },
+        {
+          "title": "Informação Implícita e Interpretação",
+          "explanation": "A informação implícita é aquela que não está escrita, mas que podemos deduzir a partir de pistas. É o famoso 'ler nas entrelinhas'. A interpretação vai além do texto: é a conclusão que você tira relacionando o texto ao seu conhecimento de mundo. Se o texto diz que 'João saiu de casa com o guarda-chuva aberto', a informação implícita é que estava chovendo.",
+          "examples": [
+            {
+              "problem": "Texto: 'João saiu de casa e abriu o guarda-chuva'. O que se pode concluir sobre o tempo?",
+              "solution": "O tempo estava chovendo.",
+              "explanation": "O texto não diz que chove, mas o ato de abrir o guarda-chuva é uma pista que leva a essa conclusão."
+            }
+          ]
+        },
+        {
+          "title": "Diferença: Compreender vs. Interpretar",
+          "explanation": "Para a Etec, você deve saber a diferença: Compreender foca no texto (o que o autor disse). Interpretar foca no sentido do texto (o que o autor quis dizer). Se a questão disser 'Segundo o texto...', é compreensão. Se disser 'Conclui-se do texto...' ou 'O texto sugere que...', é interpretação e dedução lógica.",
+          "examples": [
+            {
+              "problem": "Texto: 'A prova estava difícil e Pedro não estudou'. O que se pode inferir sobre Pedro?",
+              "solution": "Pedro provavelmente terá um mau desempenho na prova.",
+              "explanation": "O texto não diz que ele foi mal, mas a interpretação permite essa conclusão lógica de prova difícil + falta de estudo."
+            }
+          ]
+        }
+      ],
+      "guidedPractice": [
+        {
+          "question": "Texto: 'O cinema estava vazio e silencioso quando as luzes se apagaram'. Qual informação explícita está presente?",
+          "hint": "Procure uma característica do ambiente que foi descrita diretamente pelo autor.",
+          "answer": "O cinema estava vazio e silencioso.",
+          "explanation": "A alternativa está correta porque descreve exatamente o que está escrito no texto, sem interpretações de sentimentos."
+        },
+        {
+          "question": "Texto: 'Ana olhou para o relógio, suspirou e começou a correr para o ponto'. O que podemos deduzir sobre Ana?",
+          "hint": "Pense no que as pessoas geralmente fazem quando estão atrasadas.",
+          "answer": "Ana estava atrasada para pegar ônibus.",
+          "explanation": "O texto não diz que ela está atrasada, mas o suspiro e a corrida são pistas de informações implícitas."
+        },
+        {
+          "question": "Texto: 'O uso de plástico diminuiu 50% após a nova lei de reciclagem'. Qual a interpretação correta do texto?",
+          "hint": "Analise a relação de causa e efeito apresentada na frase.",
+          "answer": "A nova lei de reciclagem foi eficaz na redução do consumo de plástico.",
+          "explanation": "A interpretação liga o fato (lei) ao resultado (diminuição), concluindo que a medida funcionou conforme o esperado."
+        }
+      ],
+      "commonMistakes": [
+        "Confundir interpretação com opinião pessoal (colocar no texto algo que não está lá).",
+        "Responder perguntas de compreensão baseada no que você acha, e não no que está escrito.",
+        "Não prestar atenção nas palavras-chave como 'infere' ou 'afirma'."
+      ],
+      "summary": [
+        "Informações explícitas são aquelas que estão escritas no texto.",
+        "Compreensão é entender o conteúdo literal do texto apresentado.",
+        "Informações implícitas são deduzidas a partir de pistas do autor.",
+        "Interpretação é a conclusão lógica que tiramos do texto com o nosso conhecimento de mundo."
+      ]
+    }
+  },
+  {
+    "caso": "portugues",
+    "modelo": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "rodada": 1,
+    "case": "portugues",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "reportedModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "attempt": 1,
+    "requestMs": 58861,
+    "rawLen": 9723,
+    "completionTokens": 2400,
+    "promptTokens": 1026,
+    "finishReason": "length",
+    "jsonOk": false,
+    "validateOk": false,
+    "validateErrors": [
+      "extractJson: nao extraiu objeto"
+    ],
+    "rawContent": "{\"title\":\"Aula de Português: Informação Explícita e Implícita para Etec - Bloco 1\",\"objectives\":[\"Identificar informações explícitas em textos de diversos gêneros\", \"Distinguir informações explícitas de implícitas e compreender a diferença entre o que o texto diz e o que se conclui\", \"Realizar interpretações fundamentadas baseadas em pistas do texto\", \"Aplicar estratégias de leitura para a prova da Etec\"],\"introduction\":\"Nesta aula de 55 minutos, vamos estruturar sua leitura para a prova da Etec. Primeiro, aprenderemos a ler o que o texto diz diretamente (informação explícita). Depois, diferenciaremos o que é dito do que é sugerido (informação implícita). Por fim, praticaremos a compreensão e interpretação necessárias para acertar as questões. O foco é agilidade e precisão na leitura.\",\"sections\":[{\"title\":\"1. Informação Explícita: O que o texto diz diretamente\",\"explanation\":\"Informação explícita são os dados, fatos ou ideias que o autor apresenta claramente, sem necessidade de inferir. O leitor encontra a resposta 'na cara' do texto. Para identificar, procure por afirmações diretas, dados numéricos ou descrições óbvias. Não há 'entre-linhas' aqui.\",\"examples\":[{\"problem\":\"Leia o ",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "portugues",
+    "modelo": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "rodada": 2,
+    "case": "portugues",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "reportedModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "attempt": 1,
+    "requestMs": 52599,
+    "rawLen": 7325,
+    "completionTokens": 1827,
+    "promptTokens": 1026,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": false,
+    "validateErrors": [
+      "sections[1].examples[0].explanation: texto vazio",
+      "guidedPractice[1].answer: muito longo (402 caracteres, maximo 400)",
+      "guidedPractice[1].explanation: texto vazio",
+      "commonMistakes[0]: muito curto (1 caracteres, minimo 15)",
+      "commonMistakes[1]: muito curto (1 caracteres, minimo 15)",
+      "commonMistakes[2]: muito curto (1 caracteres, minimo 15)"
+    ],
+    "rawContent": "{\"title\":\"Português - Informação Explícita, Implícita, Compreensão e Interpretação\",\"objectives\":[\"Identificar informações explícitas em textos de diferentes gêneros.\", \"Distinguir entre informações explícitas e implícitas para compreender a mensagem do texto.\", \"Realizar interpretações fundamentadas baseadas em dados do texto e conhecimento prévio.\"],\"introduction\":\"Nesta aula de 55 minutos, vamos estruturar seu raciocínio para a prova da Etec. Primeiro, aprenderemos a achar o que o texto diz diretamente (explícito). Depois, veremos o que ele sugere sem dizer (implícito). Em seguida, conectaremos essas leituras às etapas de compreensão e interpretação, essenciais para acertar questões de múltipla escolha. Vamos praticar com textos curtos e focados em raciocínio linguístico.\",\"sections\":[{\"title\":\"1. Informação Explícita: o que o texto diz diretamente\",\"explanation\":\"Informação explícita é aquela que está escrita \\\"entre as linhas\\\" de forma clara. O leitor não precisa adivinhar; a resposta está no texto. Para identificar, procure por substantivos, verbos e detalhes que descrevem fatos, personagens ou cenas. Não adicione nada que não esteja lá.\",\"examples\":[{\"problem\":\"Leia o trech",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "portugues",
+    "modelo": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "rodada": 3,
+    "case": "portugues",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "reportedModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "attempt": 1,
+    "requestMs": 56373,
+    "rawLen": 9454,
+    "completionTokens": 2400,
+    "promptTokens": 1026,
+    "finishReason": "length",
+    "jsonOk": false,
+    "validateOk": false,
+    "validateErrors": [
+      "extractJson: nao extraiu objeto"
+    ],
+    "rawContent": "{\"title\":\"Aula de Português: Informação Explícita e Implícita para Etec - Bloco 1\",\"objectives\":[\"Identificar informações explícitas em textos de diferentes gêneros\", \"Distinguir entre informação explícita e implícita\", \"Realizar compreensão leitora de textos escolares\", \"Interpretar sentidos sugeridos mas não diretamente declarados\"],\"introduction\":\"Nesta aula de 55 minutos, vamos estruturar seu raciocínio para a prova da Etec. Primeiro, vamos aprender a ler o que o texto diz de fato (explícito). Depois, vamos descobrir o que o texto sugere, mas não diz direto (implícito). Entender a diferença entre o que está escrito e o que se pode inferir é o segredo da compreensão e da interpretação. Vamos começar?\",\"sections\":[{\"title\":\"1. Informação Explícita: O que o texto diz de fato\",\"explanation\":\"Informação explícita é aquela que está claramente escrita no texto. O leitor não precisa adivinhar ou inferir; basta ler e entender o sentido literal. Essas informações costumam aparecer nos títulos, nos primeiros parágrafos ou em frases específicas que descrevem fatos, personagens ou cenários. Para identificar, faça a pergunta: 'O que o autor disse exatamente?'\",\"examples\":[{\"problem\":\"Leia o ",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "meta/muse-glimmer-30b",
+    "rodada": 1,
+    "case": "ciencias",
+    "model": "meta/muse-glimmer-30b",
+    "reportedModel": "meta/muse-glimmer-30b",
+    "attempt": 1,
+    "requestMs": 36971,
+    "rawLen": 7555,
+    "completionTokens": 1598,
+    "promptTokens": 893,
+    "finishReason": "stop",
+    "jsonOk": false,
+    "validateOk": false,
+    "validateErrors": [
+      "extractJson: nao extraiu objeto"
+    ],
+    "rawContent": "{\"title\":\"Matéria, substância, mistura e estados físicos\",\"objectives\":[\"Diferenciar matéria de substância e reconhecer que tudo que tem massa e ocupa lugar é matéria.\",\"Classificar misturas e substâncias puras e identificar seus componentes.\",\"Reconhecer os estados físicos da matéria e explicar as mudanças entre eles.\"],\"introduction\":\"Hoje vamos organizar o que é matéria e como ela se apresenta no dia a dia. Primeiro entendemos o conceito geral de matéria, depois o que é substância pura, em seguida como substâncias se combinam em misturas e por fim os estados físicos. A ideia é construir passo a passo, sempre ligando definição a exemplo prático para fixar para a prova da Etec.\",\"sections\":[{\"title\":\"Matéria\",\"explanation\":\"Matéria é tudo que tem massa e ocupa lugar no espaço. Massa é a quantidade de matéria de um corpo e pode ser percebida pelo peso. Ocupar lugar significa ter volume. Por isso ar, água, cadeira, você, são matéria. O que não tem massa nem volume, como calor, som e luz, não é matéria, são formas de energia. Esse conceito é a base porque toda classificação posterior parte dele. Se algo existe fisicamente e pode ser medido, é matéria. Essa definição evita confusão co",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "meta/muse-glimmer-30b",
+    "rodada": 2,
+    "case": "ciencias",
+    "model": "meta/muse-glimmer-30b",
+    "reportedModel": "meta/muse-glimmer-30b",
+    "attempt": 1,
+    "requestMs": 40239,
+    "rawLen": 8461,
+    "completionTokens": 1774,
+    "promptTokens": 893,
+    "finishReason": "stop",
+    "jsonOk": false,
+    "validateOk": false,
+    "validateErrors": [
+      "extractJson: nao extraiu objeto"
+    ],
+    "rawContent": "{\"title\":\"Matéria, substância, mistura e estados físicos\",\"objectives\":[\"Identificar o que é matéria e diferenciar matéria de energia\",\"Distinguir substância pura de mistura e reconhecer seus tipos\",\"Classificar os estados físicos da matéria e explicar suas mudanças\"],\"introduction\":\"Olá, vamos direto ao ponto. Hoje você vai entender o que é matéria e como ela se organiza no mundo real. Primeiro vemos o conceito geral de matéria, depois o que é substância pura, em seguida mistura e por fim os estados físicos. A ideia é construir passo a passo, do geral para o específico, para que na prova da Etec você consiga reconhecer cada situação sem confundir. Vamos com calma e com exemplos práticos.\",\"sections\":[{\"title\":\"Matéria\",\"explanation\":\"Matéria é tudo que ocupa lugar no espaço e tem massa. Massa é a quantidade de matéria que um corpo possui, e ocupar lugar no espaço significa ter volume. Energia não é matéria, por isso luz e calor não são matéria. A matéria é feita de partículas muito pequenas chamadas átomos e moléculas que estão sempre em movimento. Por isso a matéria pode ser medida em balança e tem peso. Esse conceito é a base porque tudo que você vê e toca é matéria, desde o ar ",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "meta/muse-glimmer-30b",
+    "rodada": 3,
+    "case": "ciencias",
+    "model": "meta/muse-glimmer-30b",
+    "reportedModel": "meta/muse-glimmer-30b",
+    "attempt": 1,
+    "requestMs": 92020,
+    "rawLen": 8026,
+    "completionTokens": 1682,
+    "promptTokens": 893,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": false,
+    "validateErrors": [
+      "guidedPractice[2].hint: texto vazio"
+    ],
+    "rawContent": "{\"title\":\"Ciências: matéria, substância, mistura e estados físicos\",\"objectives\":[\"Diferenciar matéria de substância e reconhecer que tudo que tem massa e ocupa lugar é matéria.\",\"Classificar substâncias puras e misturas com base na composição.\",\"Identificar os estados físicos da matéria e explicar as mudanças entre eles.\"],\"introduction\":\"Hoje vamos organizar o que é matéria e como ela se apresenta no dia a dia. Você vai entender primeiro o que é matéria em geral, depois o que diferencia uma substância de uma mistura e por fim como a matéria muda de estado. A aula está em ordem crescente de dificuldade para caber em 55 minutos e já conecta com questões de prova da Etec.\",\"sections\":[{\"title\":\"Matéria\",\"explanation\":\"Matéria é tudo que tem massa e ocupa lugar no espaço. Massa é a quantidade de matéria de um corpo e volume é o espaço que ele ocupa. Por isso, uma cadeira, o ar que você respira e a água são matéria, enquanto luz e som não são. A matéria é feita de partículas muito pequenas chamadas átomos e moléculas que estão sempre em movimento. Essa ideia explica por que conseguimos sentir, pesar e medir objetos do mundo real. Na prova, matéria costuma aparecer como conceito básico",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "google/diffusiongemma-26b-a4b-it",
+    "rodada": 1,
+    "case": "ciencias",
+    "model": "google/diffusiongemma-26b-a4b-it",
+    "reportedModel": "google/diffusiongemma-26b-a4b-it",
+    "attempt": 1,
+    "requestMs": 6234,
+    "rawLen": 5110,
+    "completionTokens": 1145,
+    "promptTokens": 927,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": false,
+    "validateErrors": [
+      "sections[2].examples[0].solution: muito curto (15 caracteres, minimo 20)"
+    ],
+    "rawContent": "{\n\"title\":\"Matéria, Substâncias, Misturas e Estados Físicos\",\n\"objectives\": [\n\"Compreender o conceito de matéria e suas propriedades fundamentais.\",\n\"Diferenciar substâncias puras de misturas homogêneas e heterogêneas.\",\n\"Identificar e explicar as mudanças nos estados físicos da matéria.\"\n],\n\"introduction\": \"Olá! Hoje vamos entender de que tudo tudo ao nosso redor é feito. Vamos explorar o que é matéria, como ela se organiza em substâncias e misturas e como muda de estado. Esse tema é essencial para a prova da Etec, pois explica fenômenos do nosso dia a dia.\",\n\"sections\": [\n{\n\"title\": \"O que é Matéria e Substância?\",\n\"explanation\": \"Matéria é tudo o que possui massa (quantidade de matéria) e ocupa um lugar no espaço (volume). Tudo o que você vê e toca é matéria. Já a substância é um tipo específico de matéria, composta por apenas um tipo de molécula com propriedades fixas. Por exemplo, a água pura é uma substância porque todas as suas moléculas são iguais.\",\n\"examples\": [\n{\n\"problem\": \"Se um bloco de ferro tem 2kg e ocupa 10cm3, o que ele representa?\",\n\"solution\": \"Ele representa matéria.\",\n\"explanation\": \"Porque ele possui massa (2kg) e volume (10cm3), atendendo à definição cientí",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "google/diffusiongemma-26b-a4b-it",
+    "rodada": 2,
+    "case": "ciencias",
+    "model": "google/diffusiongemma-26b-a4b-it",
+    "reportedModel": "google/diffusiongemma-26b-a4b-it",
+    "attempt": 1,
+    "requestMs": 7112,
+    "rawLen": 5067,
+    "completionTokens": 1141,
+    "promptTokens": 927,
+    "finishReason": "stop",
+    "jsonOk": false,
+    "validateOk": false,
+    "validateErrors": [
+      "extractJson: nao extraiu objeto"
+    ],
+    "rawContent": "{\n\"title\":\"Matéria, Substâncias, Misturas e Estados Físicos\",\n\"objectives\":\n\"Compreender o conceito de matéria e as propriedades das substâncias.\",\n\"Diferenciar substâncias puras de misturas homogêneas e heterogêneas.\",\n\"Identificar e explicar as mudanças nos estados físicos da matéria.\"\n],\n\"introduction\": \"Olá! Hoje vamos explorar tudo o que compõe o nosso universo. Vamos entender desde o que é matéria até como ela se organiza em substâncias, misturas e muda de forma conforme a temperatura. Esse é um tema fundamental na prova da Etec, pois explica fenômenos do nosso dia a dia.\",\n\"sections\": [\n{\n\"title\":\"Matéria e Substância\",\n\"explanation\": \"Matéria é tudo aquilo que possui massa (quantidade de matéria) e ocupa lugar no espaço (volume). Uma substância é um tipo específico de matéria composta por apenas um tipo de molécula ou átomo com propriedades constantes, como a água pura. Elas não podem ser separadas por métodos físicos simples e mantêm sua natureza química uniforme.\",\n\"examples\": [\n{\n\"problem\": \"Um bloco de ferro de 100g ocupa 20cm3. O que isso representa?\",\n\"solution\": \"É matéria, pois possui massa (100g) e volume (20cm3).\",\n\"explanation\": \"A presença de massa e volume é a ",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "google/diffusiongemma-26b-a4b-it",
+    "rodada": 3,
+    "case": "ciencias",
+    "model": "google/diffusiongemma-26b-a4b-it",
+    "reportedModel": "google/diffusiongemma-26b-a4b-it",
+    "attempt": 1,
+    "requestMs": 6483,
+    "rawLen": 4970,
+    "completionTokens": 1098,
+    "promptTokens": 927,
+    "finishReason": "stop",
+    "jsonOk": false,
+    "validateOk": false,
+    "validateErrors": [
+      "extractJson: nao extraiu objeto"
+    ],
+    "rawContent": "{\n\"title\":\"Matéria, Substâncias, Misturas e Estados Físicos\",\n\"objectives\": [\n\"Compreender o conceito de matéria e suas propriedades básicas\",\n\"Diferenciar substâncias puras de misturas homogêneas e heterogêneas\",\n\"Identificar as mudanças entre os estados físicos da matéria\"\n],\n\"introduction\": \"Olá! Hoje vamos entender do que tudo ao nosso redor é feito. Vamos explorar desde o conceito de matéria até como ela se organiza em substâncias e misturas, além de mudar de forma com a temperatura. Esse tema é fundamental e cai muito na prova da Etec. Vamos lá?\",\n\"sections\": [\n{\n\"title\":\"O que é Matéria e Substância?\",\n\"explanation\": \"Matéria é tudo aquilo que possui massa (quantidade de matéria) e ocupa lugar no espaço (volume). Uma substância é um tipo específico de matéria que tem propriedades químicas constantes. Por exemplo, a água pura é uma substância porque é composta apenas por moléculas de H2O. Se mudarmos a composição química, mudamos a substância, mas o objeto continua sendo matéria.\",\n\"examples\": [\n  \"problem\": \"Se um bloco de ferro tem 2kg e ocupa 10cm³, ele é matéria?\",\n\"solution\": \"Sim, pois possui massa (2kg) e volume (10cm³).\",\n\"explanation\": \"A definição de matéria exige a",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "rodada": 1,
+    "case": "ciencias",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "reportedModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "attempt": 1,
+    "requestMs": 71429,
+    "rawLen": 3897,
+    "completionTokens": 2400,
+    "promptTokens": 991,
+    "finishReason": "length",
+    "jsonOk": false,
+    "validateOk": false,
+    "validateErrors": [
+      "extractJson: nao extraiu objeto"
+    ],
+    "rawContent": "{\"title\":\"Matéria, Substância, Mistura e Estados Físicos - Aula Completa\", \"objectives\":[\"Identificar a matéria e compreender que ela ocupa espaço e tem massa\", \"Diferenciar substância pura de mistura e classificar tipos de misturas\", \"Relacionar os estados físicos (sólido, líquido, gasoso) com as propriedades da matéria\"], \"introduction\":\"Nesta aula vamos explorar os blocos de construção do nosso universo. Vamos descobrir o que é matéria, como as substâncias se comportam e como elas podem se misturar. Entender esses conceitos e\\u00a0\\u00e9 fundamental para resolver quest\\u00f5es de prova da Etec que cobram diferen\\u00e7as entre elementos, compostos e misturas, e t\\u00edtulos de estados f\\u00edsicos.\",\"sections\":[{\"title\":\"1. O que \\u00e9 Matéria?\", \"explanation\":\"Mat\\u00e9ria \\u00e9 tudo o que ocupa espa\\u00e7o e tem massa. Isso inclui o ar que respiramos, a mesa onde senta, a agua da garrafa e at\\u00e9 o seu pr\\u00f3prio corpo. Na ci\\u00eancia, usamos dois testes para identificar mat\\u00e9ria: ela ocupa espa\\u00e7o (se caber em um recipiente, \\u00e9 mat\\u00e9ria) e tem massa (se pesar em uma balan\\u00e7a, \\u00e9 mat\\u00e9ria).\\n\\nPor que isso acontece? \\nNo nivel atomico, a mat\\u",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "rodada": 2,
+    "case": "ciencias",
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "reportedModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "attempt": 1,
+    "requestMs": 29025,
+    "rawLen": 4942,
+    "completionTokens": 1150,
+    "promptTokens": 991,
+    "finishReason": "stop",
+    "jsonOk": true,
+    "validateOk": false,
+    "validateErrors": [
+      "sections: minimo 2 secoes, veio 1"
+    ],
+    "rawContent": "{\"title\":\"Ciências: Matéria, Substância, Mistura e Estados Físicos - Bloco 2 - Semana 1 Dia 2\",\"objectives\":[\"Identificar e diferenciar matéria, substância e mistura sob a ótica da composição e propriedades.\", \"Classificar os estados físicos da matéria (sólido, líquido e gasoso) pelas características de partículas e organização.\", \"Resolver questões de prova da Etec sobre classificação e propriedades da matéria e suas transformações.\", \"Reconhecer a diferença entre mistura homogênea e heterogênea e identificar exemplos do cotidiano.\"],\"introduction\":\"Nesta aula, vamos estruturar o conhecimento sobre a matéria do zero, conectando conceitos fundamentais para a prova da Etec. Primeiro, entenderemos o que constitui a matéria e como ela se organiza. Em seguida, distinguiremos substâncias de misturas e exploraremos como a matéria se apresenta nos estados físicos. Cada etapa será explicada com foco no raciocínio lógico e na resolução de problemas, evitando apenas a memorização de definições.\",\"sections\":[{\"title\":\"1. O que é Matéria? Conceito Fundamental\",\"explanation\":\"A matéria é tudo o que ocupa espaço e tem massa. É o 'tudo' do universo visível. Na ciência, não basta dizer 'coisa', pr",
+    "counts": null,
+    "lesson": null
+  },
+  {
+    "caso": "ciencias",
+    "modelo": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "rodada": 3,
+    "ok": false,
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "requestMs": 140002,
+    "error": "timeout",
+    "detail": "The signal has been aborted",
+    "case": "ciencias",
+    "attempt": 1
+  }
+]

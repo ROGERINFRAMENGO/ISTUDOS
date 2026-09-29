@@ -1,0 +1,58 @@
+{
+  "case": "portugues",
+  "promptChars": 3614,
+  "models": [
+    "openai/gpt-oss-20b"
+  ],
+  "repeats": 1,
+  "results": [
+    {
+      "case": "portugues",
+      "model": "openai/gpt-oss-20b",
+      "attempt": 1,
+      "jsonModeWanted": true,
+      "probeJsonMode": null,
+      "ok": false,
+      "totalMs": 3157,
+      "requestMs": 3155,
+      "jsonOk": true,
+      "extractOk": true,
+      "validateOk": false,
+      "validateErrors": [
+        "sections[1].title: texto vazio",
+        "sections[1].explanation: texto vazio",
+        "guidedPractice: minimo 2 exercicios, veio 0",
+        "commonMistakes: minimo 2 itens, veio 0",
+        "summary: minimo 2 itens, veio 0"
+      ],
+      "completionTokens": 361,
+      "promptTokens": 987,
+      "finishReason": "stop",
+      "usedJsonMode": true,
+      "rawChars": 2,
+      "rawPreview": "{\"title\":\"Informação Explícita e Implícita: Compreensão e Interpretação\",\"objectives\":[\"Entender o que é informação explícita e como identificá-la\",\"Aprender a reconhecer informação implícita e diferenciar das duas\",\"Desenvolver habilidades de compreensão e interpretação de textos curtos\"],\"introduction\":\"Hoje você vai aprender a identificar o que o autor diz de forma direta (informação explícita) e o que ele deixa entrever (informação implícita). Depois, vamos praticar a leitura de textos curtos, separando o que o texto realmente diz daquilo que você pode concluir a partir dele. Essa prática vai te preparar para a prova da Etec, onde esses conceitos são fundamentais.\",\"sections\":[{\"title\":\"",
+      "counts": {
+        "objectives": 0,
+        "sections": 0,
+        "guidedPractice": 0,
+        "commonMistakes": 0,
+        "summary": 0,
+        "chars": 2,
+        "words": 1
+      },
+      "quality": {
+        "subtopicos": "0/4",
+        "placeholders": false,
+        "inventou_nota": false,
+        "delegou_pesquisa": false,
+        "com_exemplo": false,
+        "exercicio_completo": false,
+        "resposta_explicada": true,
+        "markdown": false,
+        "html": false,
+        "acentos_ok": false
+      },
+      "lesson": null
+    }
+  ]
+}

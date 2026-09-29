@@ -1,0 +1,55 @@
+{
+  "case": "portugues",
+  "promptChars": 3540,
+  "results": [
+    {
+      "case": "portugues",
+      "model": "meta/muse-glimmer-30b",
+      "reportedModel": "meta/muse-glimmer-30b",
+      "attempt": 1,
+      "requestMs": 21267,
+      "rawLen": 7333,
+      "completionTokens": 1552,
+      "promptTokens": 930,
+      "finishReason": "stop",
+      "jsonOk": false,
+      "validateOk": false,
+      "validateErrors": [
+        "extractJson: nao extraiu objeto"
+      ],
+      "counts": null,
+      "lesson": null
+    },
+    {
+      "ok": false,
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "requestMs": 644,
+      "error": "http_400",
+      "detail": "[object Object]",
+      "case": "portugues",
+      "attempt": 1
+    },
+    {
+      "case": "portugues",
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "reportedModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "attempt": 1,
+      "requestMs": 28217,
+      "rawLen": 3221,
+      "completionTokens": 751,
+      "promptTokens": 1026,
+      "finishReason": "stop",
+      "jsonOk": true,
+      "validateOk": false,
+      "validateErrors": [
+        "sections: minimo 2 secoes, veio 1",
+        "sections[0].examples[1].explanation: texto vazio",
+        "guidedPractice: minimo 2 exercicios, veio 0",
+        "commonMistakes: minimo 2 itens, veio 0",
+        "summary: minimo 2 itens, veio 0"
+      ],
+      "counts": null,
+      "lesson": null
+    }
+  ]
+}

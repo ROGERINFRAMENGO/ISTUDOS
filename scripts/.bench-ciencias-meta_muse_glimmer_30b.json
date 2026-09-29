@@ -1,0 +1,128 @@
+{
+  "case": "ciencias",
+  "promptChars": 3429,
+  "models": [
+    "meta/muse-glimmer-30b"
+  ],
+  "repeats": 1,
+  "results": [
+    {
+      "case": "ciencias",
+      "model": "meta/muse-glimmer-30b",
+      "attempt": 1,
+      "jsonModeWanted": true,
+      "probeJsonMode": null,
+      "ok": true,
+      "totalMs": 52181,
+      "requestMs": 52177,
+      "jsonOk": true,
+      "extractOk": true,
+      "validateOk": true,
+      "validateErrors": [],
+      "completionTokens": 1545,
+      "promptTokens": 910,
+      "finishReason": "stop",
+      "usedJsonMode": true,
+      "rawChars": 5236,
+      "rawPreview": null,
+      "counts": {
+        "objectives": 3,
+        "sections": 3,
+        "guidedPractice": 3,
+        "commonMistakes": 3,
+        "summary": 3,
+        "chars": 5236,
+        "words": 745
+      },
+      "quality": {
+        "subtopicos": "4/4",
+        "placeholders": true,
+        "inventou_nota": false,
+        "delegou_pesquisa": false,
+        "com_exemplo": true,
+        "exercicio_completo": true,
+        "resposta_explicada": false,
+        "markdown": false,
+        "html": false,
+        "acentos_ok": true
+      },
+      "lesson": {
+        "title": "Matéria, substância, mistura e estados físicos",
+        "subject": "Ciências",
+        "topic": "matéria",
+        "estimatedMinutes": 55,
+        "objectives": [
+          "Identificar o que é matéria e diferenciar do que não é matéria.",
+          "Distinguir substância pura de mistura e reconhecer seus tipos.",
+          "Reconhecer os estados físicos da matéria e explicar mudanças entre eles."
+        ],
+        "introduction": "Hoje vamos entender o que é matéria e como ela se organiza no dia a dia. Você vai ver por que tudo que tem massa e ocupa lugar é matéria, como diferenciar substância de mistura e como os estados físicos aparecem nas situações de prova da Etec. A aula está em ordem crescente de dificuldade para caber em 55 minutos.",
+        "sections": [
+          {
+            "title": "O que é matéria",
+            "explanation": "Matéria é tudo que tem massa e ocupa lugar no espaço. Massa é a quantidade de matéria de um corpo, e volume é o espaço que ele ocupa. Por isso, ar, água, mesa e você são matéria. Luz, calor, som e pensamento não são matéria porque não têm massa nem ocupam lugar de forma material. Essa definição é o ponto de partida porque toda classificação posterior parte dela. Na prova, costuma aparecer a pergunta do que não é matéria para testar se você sabe diferenciar propriedades físicas de fenômenos imateriais.",
+            "examples": [
+              {
+                "problem": "O que é matéria? Classifique: ar, luz, livro, som.",
+                "solution": "Matéria é tudo que tem massa e ocupa lugar. Ar e livro são matéria. Luz e som não são matéria.\nAr tem massa e ocupa lugar. Livro tem massa e ocupa lugar. Luz não tem massa. Som é vibração e não ocupa lugar material.",
+                "explanation": "A ideia é aplicar a definição de massa e volume. Se o item tem os dois, é matéria. Se não tem, não é."
+              }
+            ]
+          },
+          {
+            "title": "Substância e mistura",
+            "explanation": "Substância é um tipo de matéria com composição definida e propriedades constantes. Pode ser elemento, formado por um só tipo de átomo, ou composto, formado por dois ou mais tipos de átomos ligados quimicamente, como água H2O. Mistura é a junção de duas ou mais substâncias sem reação química, podendo ser separada por métodos físicos. Mistura homogênea tem aspecto uniforme, como sal na água, e mistura heterogênea tem partes distinguíveis, como água e óleo. Essa diferença é importante porque substância pura tem ponto de fusão e ebulição fixos, enquanto mistura varia.",
+            "examples": [
+              {
+                "problem": "Água do mar é substância pura ou mistura? Justifique.",
+                "solution": "Água do mar é mistura heterogênea na prática, mas considerada homogênea em escala macroscópica. É mistura de água com sais e outros componentes.\nPode ser separada por evaporação. Não tem composição fixa nem propriedades constantes como substância pura.",
+                "explanation": "Mistura não tem composição definida. Água do mar varia de lugar para lugar, logo não é substância pura."
+              }
+            ]
+          },
+          {
+            "title": "Estados físicos da matéria",
+            "explanation": "Estado físico descreve como as partículas de uma matéria estão organizadas e se movem. Sólido tem forma e volume definidos, partículas próximas e vibrando no lugar. Líquido tem volume definido e assume forma do recipiente, partículas deslizam umas sobre as outras. Gasoso não tem forma nem volume definidos, partículas se movem livremente ocupando todo recipiente. As mudanças de estado ocorrem com variação de temperatura e pressão. Fusão é sólido para líquido, solidificação é o inverso, vaporização é líquido para gás, condensação é gás para líquido, sublimação é sólido para gás direto e deposição o inverso.",
+            "examples": [
+              {
+                "problem": "O gelo derrete no copo. Que mudança de estado ocorre e por quê?",
+                "solution": "Ocorre fusão, sólido para líquido. O gelo absorve calor do ambiente e as partículas ganham energia para se afastarem.\nA forma definida do gelo é perdida e o volume se mantém aproximadamente. É mudança física reversível.",
+                "explanation": "Fusão depende de temperatura atingir o ponto de fusão da água, 0°C a 1 atm. É exemplo clássico de mudança de estado."
+              }
+            ]
+          }
+        ],
+        "guidedPractice": [
+          {
+            "question": "O ar que você respira é matéria? Explique em uma frase.",
+            "hint": "Pense em massa e volume.",
+            "answer": "Sim, o ar é matéria porque tem massa e ocupa lugar no espaço.",
+            "explanation": "Ar é mistura gasosa de gases. Mesmo sendo invisível, tem massa e volume."
+          },
+          {
+            "question": "Sal de cozinha dissolvido na água forma substância pura ou mistura homogênea?",
+            "hint": "A composição é fixa?",
+            "answer": "Mistura homogênea, pois é junção de duas substâncias sem reação química e com aspecto uniforme.",
+            "explanation": "Pode ser separada por cristalização. Não tem propriedades fixas como substância pura."
+          },
+          {
+            "question": "Cite um exemplo de sublimação no dia a dia.",
+            "hint": "Pense em gelo seco ou naftalina.",
+            "answer": "Gelo seco passa de sólido para gás sem virar líquido, ou naftalina que some em vapor.",
+            "explanation": "Sublimação é mudança direta sólido-gás, comum em baixas pressões ou temperaturas específicas."
+          }
+        ],
+        "commonMistakes": [
+          "Confundir matéria com energia, achando que luz e som são matéria.",
+          "Achar que mistura homogênea é substância pura por parecer uniforme.",
+          "Misturar mudança de estado com mudança química, como queimar papel."
+        ],
+        "summary": [
+          "Matéria é tudo que tem massa e ocupa lugar.",
+          "Substância pura tem composição definida, mistura não.",
+          "Estados físicos dependem da organização das partículas e mudam com temperatura e pressão."
+        ]
+      }
+    }
+  ]
+}

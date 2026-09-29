@@ -1,0 +1,24 @@
+{
+  "case": "portugues",
+  "promptChars": 3614,
+  "models": [
+    "google/gemma-4-31b-it"
+  ],
+  "repeats": 1,
+  "results": [
+    {
+      "case": "portugues",
+      "model": "google/gemma-4-31b-it",
+      "attempt": 1,
+      "jsonModeWanted": true,
+      "probeJsonMode": null,
+      "ok": false,
+      "totalMs": 140002,
+      "error": "ai_timeout",
+      "isAiError": true,
+      "status": 504,
+      "detail": "modelo google/gemma-4-31b-it passou de 140000ms",
+      "stack": null
+    }
+  ]
+}

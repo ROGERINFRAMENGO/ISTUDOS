@@ -1,0 +1,30 @@
+{
+  "case": "portugues",
+  "promptChars": 3540,
+  "results": [
+    {
+      "case": "portugues",
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "reportedModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "attempt": 1,
+      "requestMs": 90420,
+      "rawLen": 5504,
+      "completionTokens": 1325,
+      "promptTokens": 1026,
+      "finishReason": "stop",
+      "jsonOk": true,
+      "validateOk": false,
+      "validateErrors": [
+        "sections[0].examples[0].solution: texto vazio",
+        "sections[1].examples[0].solution: texto vazio",
+        "sections[1].examples[0].explanation: texto vazio",
+        "guidedPractice[0].hint: texto vazio",
+        "guidedPractice[0].answer: texto vazio",
+        "guidedPractice[0].explanation: texto vazio"
+      ],
+      "rawContent": "{\"title\":\"Português - Informação Explícita, Implícita, Compreensão e Interpretação\",\"objectives\":[\"Identificar a informação explícita em um texto\", \"Diferenciar informação explícita de informação implícita\", \"Realizar compreensão e interpretação de textos curtos\"],\"introduction\":\"Nesta aula de 55 minutos, vamos estruturar o raciocínio para ler textos de forma organizada. Primeiro, vamos aprender a encontrar o que o texto diz diretamente (explícito). Depois, vamos entender o que fica por trás das palavras (implícito). Em seguida, vamos praticar a compreensão literal e, por fim, a interpretação crítica, essencial para a Etec.\",\"sections\":[{\"title\":\"1. Informação Explícita\",\"explanation\":\"Informação explícita é aquela que o autor diz diretamente, sem segredos. Está 'na cara' no texto, na frase principal ou em detalhes claros. Para identificar, procure por afirmações firmes, dados de fato ou descrições diretas. Não precisa adivinhar: se o texto diz, é explícito.\",\"examples\":[{\"problem\":\"Leia o trecho: 'O céu estava completamente nublado e o vento soprou forte durante toda a tarde.' Qual informação é explícita?\\n\\nA) Que o dia estava ensolarado.\\nB) Que o céu estava nublado.\\nC) Que nin",
+      "counts": null,
+      "lesson": null
+    }
+  ]
+}

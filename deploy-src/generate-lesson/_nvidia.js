@@ -238,9 +238,12 @@ export async function requestJson(apiKey, options = {}, retryOptions = {}) {
     // finish_reason = "length" significa que max_tokens cortou a aula no
     // meio: e um problema de orcamento de tokens, nao de JSON invalido.
     // Guardamos os ultimos 900 chars porque e ali que o modelo estraga o JSON.
+    // A API devolve o uso em completion_tokens (snake_case); aceitamos os
+    // dois nomes para o log de diagnostico nunca sair como "tokens=?".
+    const tokens = result.usage?.completion_tokens ?? result.usage?.completionTokens ?? "?";
     const detail =
       `finish=${result.finishReason} chars=${result.content.length} ` +
-      `tokens=${result.usage?.completionTokens ?? "?"} | fim: ${result.content.slice(-900)}`;
+      `tokens=${tokens} | fim: ${result.content.slice(-900)}`;
     throw new AiError("malformed_json", { status: 502, retryable: true, detail });
   }
   return {

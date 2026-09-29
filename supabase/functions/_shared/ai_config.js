@@ -22,11 +22,12 @@ export const AI_BASE_URL = "https://integrate.api.nvidia.com/v1";
 export const AI_PRIMARY_MODEL = "google/diffusiongemma-26b-a4b-it";
 export const AI_FALLBACK_MODEL = "meta/muse-glimmer-30b";
 
-/** Lista usada pelo benchmark da FASE 1. */
+/** Candidatos a fallback, medidos pelo ai-bench (busca de um fallback
+ *  mais rapido que o Muse Glimmer). Nao entram sozinhos no fluxo. */
 export const BENCH_MODELS = [
+  "openai/gpt-oss-20b",
+  "google/gemma-4-31b-it",
   "meta/muse-glimmer-30b",
-  "google/diffusiongemma-26b-a4b-it",
-  "nvidia/nemotron-3.5-lightning-30b-a3b",
 ];
 
 export const AI_TEMPERATURE = 0.55;

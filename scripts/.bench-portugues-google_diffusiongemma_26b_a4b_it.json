@@ -1,0 +1,23 @@
+{
+  "case": "portugues",
+  "promptChars": 3614,
+  "models": [
+    "google/diffusiongemma-26b-a4b-it"
+  ],
+  "repeats": 1,
+  "results": [
+    {
+      "case": "portugues",
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "attempt": 1,
+      "jsonModeWanted": false,
+      "probeJsonMode": null,
+      "ok": false,
+      "totalMs": 6194,
+      "error": "Cannot read properties of undefined (reading 'length')",
+      "isAiError": false,
+      "status": 0,
+      "detail": "Cannot read properties of undefined (reading 'length')"
+    }
+  ]
+}
