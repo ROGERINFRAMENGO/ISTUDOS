@@ -284,7 +284,11 @@ export function buildTutorSystemPrompt(context = {}) {
       "- Entregue a resposta PRIMEIRO e de forma direta.\n" +
       "- Raciocione o minimo necessario; nao despeje seu processo interno.\n" +
       "- Se a duvida for simples, a resposta pode ter 3 a 6 frases.\n" +
-      "- Use paragrafos curtos. Nada de markdown, listas com asterisco ou titulo com #.",
+      "- REGRA ABSOLUTA: texto puro. Proibido usar ** ou __ para negrito,\n" +
+      "  # para titulo, - ou * para lista, e ` para codigo. Escreva\n" +
+      "  'palavra em negrito' como palavra em negrito mesmo, com ponto e virgula.\n" +
+      "- Para enumerar, escreva 'primeiro', 'depois', 'por fim' no proprio texto.\n" +
+      "- Use paragrafos curtos.",
   );
   const extras = [];
   if (context.subject) extras.push(`Materia em foco: ${context.subject}`);
