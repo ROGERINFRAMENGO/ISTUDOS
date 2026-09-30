@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   askTutorStream,
   AI_DISCONNECTED_MESSAGE,
@@ -6,7 +6,7 @@ import {
   isAiConfigured,
 } from '../services/aiChat';
 import { buildSimulado, loadSimulados, parseSimuladoIntent, saveSimulados } from '../services/simulados';
-import { lerDiagTutor, limparDiagTutor } from '../services/ai';
+import { diagTutor, lerDiagTutor, limparDiagTutor } from '../services/ai';
 import { isSyncConfigured, mergeChat, nowIso, pullShared, pushShared } from '../services/sync';
 import { subjects } from '../data/mockData';
 import { DAY_LABELS, formatDateBR, getDateKey, getDayKey } from '../data/lessons';
@@ -114,6 +114,12 @@ export default function TutorChat({
     saveChat(messages);
   }, [messages]);
 
+  // Registra o tamanho do estado a cada mudanca: mostra QUANDO a
+  // resposta entra e QUANDO ela volta a sumir.
+  useEffect(() => {
+    diagTutor(`estado ${messages.length} msgs`);
+  }, [messages]);
+
   // ---------- Sincroniza o chat entre celular e computador ----------
   const [syncReady, setSyncReady] = useState(!isSyncConfigured);
   const lastPushedRef = useRef('');
@@ -127,6 +133,7 @@ export default function TutorChat({
       if (cancelled) return;
       const remoteChat = remote?.data?.chat;
       if (Array.isArray(remoteChat) && remoteChat.length) {
+        diagTutor(`boot:recebeu ${remoteChat.length} msgs`);
         setMessages((prev) => mergeChat(prev, remoteChat));
       }
       setSyncReady(true);
@@ -149,6 +156,7 @@ export default function TutorChat({
       lastPushedRef.current = serialized;
       const remoteChat = result?.data?.chat;
       if (Array.isArray(remoteChat) && remoteChat.length) {
+        diagTutor("sync:volta " + remoteChat.length + " msgs, local " + messages.length);
         setMessages((prev) => mergeChat(prev, remoteChat));
       }
     }, 1500);
@@ -272,6 +280,7 @@ export default function TutorChat({
           onStart: () => setStatus('streaming'),
           onDelta: (_pedaco, acumulado) => {
             recebeuAlgo = true;
+            diagTutor("onDelta " + String(acumulado).length + " chars");
             setStatus('streaming');
             setStreamText(acumulado);
             setMessages((prev) => {
@@ -287,6 +296,7 @@ export default function TutorChat({
             });
           },
           onDone: (dados) => {
+            diagTutor("onDone reply=" + String(dados && dados.reply ? dados.reply.length : 0) + " conv=" + (dados && dados.conversationId ? "sim" : "NAO"));
             if (dados?.conversationId) setConversationId(dados.conversationId);
             // O "done" leva o texto completo: reconcilia caso algum
             // pedaco tenha se perdido no caminho.
@@ -427,8 +437,8 @@ export default function TutorChat({
         <div className="chat-diag">
           <p className="chat-diag-title">Diagnostico do Tutor</p>
           <p className="chat-diag-msgs">
-            Mensagens no estado: <strong>{messages.length}</strong> · status: <strong>{status}</strong>
-            {conversationId ? ' · conversa ok' : ' · SEM conversa'}
+            Mensagens no estado: <strong>{messages.length}</strong> Â· status: <strong>{status}</strong>
+            {conversationId ? ' Â· conversa ok' : ' Â· SEM conversa'}
           </p>
           <pre className="chat-diag-log">
             {diagLinhas.length ? diagLinhas.join('\n') : '(sem registros ainda)'}

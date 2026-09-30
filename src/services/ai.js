@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // Comunicacao do frontend com a IA (SR no backend)
 // ------------------------------------------------------------
 // O navegador NUNCA fala com a NVIDIA e NUNCA tem a chave.
@@ -401,6 +401,10 @@ function diag(etapa, detalhe) {
   } catch {
     // diagnostico nunca pode quebrar o chat
   }
+}
+
+export function diagTutor(etapa) {
+  diag(etapa);
 }
 
 export function lerDiagTutor() {
