@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   askTutorStream,
   AI_DISCONNECTED_MESSAGE,
@@ -116,7 +116,13 @@ export default function TutorChat({
 
   // Registra o tamanho do estado a cada mudanca: mostra QUANDO a
   // resposta entra e QUANDO ela volta a sumir.
+  // CORRECAO (30/09/2026): loga so quando o TOTAL muda. Antes rodava a
+  // cada delta (~60x por resposta) e cada diagTutor le + reescreve o
+  // localStorage inteiro, o que deixava a tela travando no celular.
+  const totalAnteriorRef = useRef(-1);
   useEffect(() => {
+    if (messages.length === totalAnteriorRef.current) return;
+    totalAnteriorRef.current = messages.length;
     diagTutor(`estado ${messages.length} msgs`);
   }, [messages]);
 
@@ -146,8 +152,17 @@ export default function TutorChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // NUNCA sincroniza com a tutora escrevendo (correcao do "congela no
+  // meio da resposta", 30/09/2026): pushShared sao DUAS idas ao banco
+  // (SELECT + UPSERT) e, quando voltava, o setMessages(mergeChat(...))
+  // substituia a lista do estado pela copia que estava no servidor.
+  // Como o gpt-oss leva ~5s "pensando" antes do primeiro delta, o timer
+  // de 1500ms deste efeito disparava no meio da resposta: a bolha era
+  // trocada pela conversa de antes e o texto parava de crescer na tela,
+  // mesmo com HTTP 200 e SSE perfeito. O merge agora so roda de conversa
+  // parada (isThinking falso) e por isso tambem esta na dependencia.
   useEffect(() => {
-    if (!isSyncConfigured || !syncReady) return undefined;
+    if (!isSyncConfigured || !syncReady || isThinking) return undefined;
     const serialized = JSON.stringify(messages);
     if (serialized === lastPushedRef.current) return undefined;
 
@@ -157,18 +172,36 @@ export default function TutorChat({
       const remoteChat = result?.data?.chat;
       if (Array.isArray(remoteChat) && remoteChat.length) {
         diagTutor("sync:volta " + remoteChat.length + " msgs, local " + messages.length);
+        const merged = mergeChat(messages, remoteChat);
+        // A resposta sobreviveu ao merge? E o passo 8 da sequencia: se o
+        // texto some AQUI, a causa e a sincronizacao, nao o streaming.
+        const aindaTem = merged.some((m) => m.role === 'assistant' && String(m.content || '').trim().length > 0);
         setMessages((prev) => mergeChat(prev, remoteChat));
+        setDiagLinhas((antigas) => [
+          ...antigas.slice(-40),
+          `${new Date().toISOString().slice(11, 19)} 7.sync:volta ${merged.length} msgs | resposta presente: ${aindaTem ? 'SIM' : 'NAO'}`,
+        ]);
       }
     }, 1500);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncReady, messages]);
+  }, [syncReady, messages, isThinking]);
 
   // ---------- Diagnostico do Tutor (remover quando o bug fechar) ----------
   const [diagAberto, setDiagAberto] = useState(false);
   const [diagLinhas, setDiagLinhas] = useState(() => lerDiagTutor());
   const [statusTexto, setStatusTexto] = useState('');
+
+  // Soma 1 a 1 a cada handler e refresca o painel. Sem isso o painel
+  // ficava vazio: o diagTutor() escrevia no localStorage mas o React
+  // nunca re-renderizava para mostrar as linhas novas.
+  // Cada etapa e logada com um prefixo, entao a ordem real da resposta
+  // fica visivel (onStart -> onDelta -> onDone -> sync).
+  const registrar = useCallback((etapa, detalhe = '') => {
+    diagTutor(etapa, detalhe);
+    setDiagLinhas(lerDiagTutor());
+  }, []);
 
   // Reflete o status na tela: e o primeiro sinal de que travou.
   useEffect(() => {
@@ -284,13 +317,17 @@ export default function TutorChat({
     // done chegasse com reply vazio/ausente, a resposta sumia da tela
     // mesmo com deltas recebidos.
     let textoAcumulado = '';
+    // Ultima vez que registramos o avanco no painel: logar a cada delta
+    // custa um localStorage inteiro por pedaco (60x por resposta).
+    let ultimoLogDelta = 0;
+
 
     // Vigia de seguranca: se nada acontecer (rede caiu, sessao travada,
     // fetch pendurado), mostra erro com "tentar de novo" em vez de
     // prender o chat em 'Respondendo...' para sempre. Rearma a cada
     // delta: so dispara apos 30s SEM nenhum dado novo.
     const armarVigia = () => setTimeout(() => {
-      diagTutor('VIGIA: 30s sem resposta, destravando');
+      registrar('VIGIA', '30s sem resposta, destravando');
       setStatus('error');
       setStreamText('');
       setMessages((prev) => {
@@ -305,18 +342,28 @@ export default function TutorChat({
       });
     }, 30000);
     let vigia = armarVigia();
+    registrar('0.envio', 'abrindo sessao e chamando a Edge Function');
     try {
       await askTutorStream(
         { messages: [...janela, { role: 'user', content: clean }], context, conversationId },
         {
-          onStart: () => setStatus('streaming'),
+          onStart: () => {
+            registrar('1.onStart', 'a tutora comecou');
+            setStatus('streaming');
+          },
           onDelta: (_pedaco, acumulado) => {
             recebeuAlgo = true;
             textoAcumulado = acumulado;
             // Rearma: a resposta esta chegando, o problema e so lentidao.
             clearTimeout(vigia);
             vigia = armarVigia();
-            diagTutor("onDelta " + String(acumulado).length + " chars");
+            // Loga no maximo ~1x por segundo (o primeiro pedaco sempre
+            // entra): o resto do trabalho por delta e so React.
+            const agora = Date.now();
+            if (ultimoLogDelta === 0 || agora - ultimoLogDelta > 1000) {
+              ultimoLogDelta = agora;
+              registrar('2.onDelta', `+${String(acumulado).length} chars`);
+            }
             setStatus('streaming');
             setStreamText(acumulado);
             setMessages((prev) => {
@@ -333,7 +380,10 @@ export default function TutorChat({
           },
           onDone: (dados) => {
             clearTimeout(vigia);
-            diagTutor("onDone reply=" + String(dados && dados.reply ? dados.reply.length : 0) + " conv=" + (dados && dados.conversationId ? "sim" : "NAO"));
+            registrar(
+              '5.onDone',
+              `reply=${String(dados && dados.reply ? dados.reply.length : 0)} conv=${dados && dados.conversationId ? 'sim' : 'NAO'}`,
+            );
             if (dados?.conversationId) setConversationId(dados.conversationId);
             // O "done" leva o texto completo: reconcilia caso algum
             // pedaco tenha se perdido no caminho. Usa o acumulador LOCAL
@@ -373,8 +423,14 @@ export default function TutorChat({
             });
             setStreamText('');
             setStatus('idle');
+            // Confirma o que o estado realmente ficou: e este passo que
+            // diz se a bolha entrou na tela (streaming:false, id vivo).
+            setTimeout(() => {
+              setDiagLinhas(lerDiagTutor());
+            }, 0);
           },
           onError: (error) => {
+            registrar('X.onError', `code=${error?.code ?? '-'} status=${error?.status ?? '-'}`);
             clearTimeout(vigia);
             // Rate limit: mostra o tempo de espera e nao trata como falha.
             if (error?.status === 429 || error?.code === 'rate_limited') {
@@ -407,7 +463,8 @@ export default function TutorChat({
           },
         },
       );
-    } catch {
+    } catch (erro) {
+      registrar('X.excecao', String(erro?.message ?? erro).slice(0, 80));
       clearTimeout(vigia);
       if (status !== 'rate_limited') {
         setStatus('error');
@@ -520,6 +577,17 @@ export default function TutorChat({
                   `[${messages.length - 4 + i}] ${m.role} streaming=${m.streaming === true} chars=${String(m.content || '').length} :: ${String(m.content || '').slice(0, 60)}`,
               )
               .join('\n') || '(sem mensagens)'}
+          </pre>
+
+          {/* ETAPA 6: o log REAL de cada etapa. Antes estas linhas eram
+              coletadas em diagLinhas e nunca renderizadas - o painel
+              mostrava o estado das mensagens mas nao dizia em que passo
+              a resposta tinha parado. Sem JWT, sem chave, sem token. */}
+          <p className="chat-diag-title">Log das etapas</p>
+          <pre className="chat-diag-estado">
+            {diagLinhas.length
+              ? diagLinhas.slice(-40).join('\n')
+              : '(nenhum log ainda - envie uma mensagem)'}
           </pre>
 
           <div className="chat-diag-acoes">

@@ -27,7 +27,13 @@ for (const h of ['onStart', 'onDelta', 'onDone', 'onError']) {
 }
 
 console.log('\n=== TutorChat.jsx: passa onStart? ===');
-const passaStart = /onStart:\s*\(\)\s*=>\s*setStatus\('streaming'\)/.test(chat);
+// O onStart precisa marcar 'streaming' E mudar o estado. Aceita as
+// duas formas: arrow de expressao (uma linha) ou bloco com corpo,
+// que e o que o codigo usa para registrar a etapa no diagnostico.
+const passaStart =
+  /onStart:\s*\(\)\s*=>\s*setStatus\('streaming'\)/.test(chat)
+  || (/onStart:\s*\(\)\s*=>\s*\{/.test(chat) && /registrar\('1\.onStart'/.test(chat)
+      && /onStart:[\s\S]{0,200}setStatus\('streaming'\)/.test(chat));
 console.log('  onStart presente:', passaStart ? 'sim' : 'NAO');
 
 console.log('\n=== a mensagem final some depois? ===');
