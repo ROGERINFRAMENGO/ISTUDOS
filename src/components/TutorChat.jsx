@@ -279,15 +279,32 @@ export default function TutorChat({
     // Mensagem provisoria que vai recebendo o texto do Tutor.
     const idProvisoria = `parcial-${Date.now()}`;
     let recebeuAlgo = false;
+    // CORRECAO (30/09/2026): acumulador LOCAL do texto que chegou.
+    // Antes o onDone usava `streamText` do estado (stale closure): se o
+    // done chegasse com reply vazio/ausente, a resposta sumia da tela
+    // mesmo com deltas recebidos.
+    let textoAcumulado = '';
 
     // Vigia de seguranca: se nada acontecer (rede caiu, sessao travada,
-    // fetch pendurado), o status volta para idle e a aluna pode tentar de novo.
-    // Sem isto, um unico travamento prendia o chat para sempre.
-    const vigia = setTimeout(() => {
+    // fetch pendurado), mostra erro com "tentar de novo" em vez de
+    // prender o chat em 'Respondendo...' para sempre. Rearma a cada
+    // delta: so dispara apos 30s SEM nenhum dado novo.
+    const armarVigia = () => setTimeout(() => {
       diagTutor('VIGIA: 30s sem resposta, destravando');
       setStatus('error');
       setStreamText('');
+      setMessages((prev) => {
+        const temProvisoria = prev.some((m) => m.id === idProvisoria);
+        if (temProvisoria && !recebeuAlgo) {
+          return [
+            ...prev.filter((m) => m.id !== idProvisoria),
+            { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() },
+          ];
+        }
+        return prev;
+      });
     }, 30000);
+    let vigia = armarVigia();
     try {
       await askTutorStream(
         { messages: [...janela, { role: 'user', content: clean }], context, conversationId },
@@ -295,6 +312,10 @@ export default function TutorChat({
           onStart: () => setStatus('streaming'),
           onDelta: (_pedaco, acumulado) => {
             recebeuAlgo = true;
+            textoAcumulado = acumulado;
+            // Rearma: a resposta esta chegando, o problema e so lentidao.
+            clearTimeout(vigia);
+            vigia = armarVigia();
             diagTutor("onDelta " + String(acumulado).length + " chars");
             setStatus('streaming');
             setStreamText(acumulado);
@@ -311,11 +332,29 @@ export default function TutorChat({
             });
           },
           onDone: (dados) => {
+            clearTimeout(vigia);
             diagTutor("onDone reply=" + String(dados && dados.reply ? dados.reply.length : 0) + " conv=" + (dados && dados.conversationId ? "sim" : "NAO"));
             if (dados?.conversationId) setConversationId(dados.conversationId);
             // O "done" leva o texto completo: reconcilia caso algum
-            // pedaco tenha se perdido no caminho.
-            const final = dados?.reply ?? streamText;
+            // pedaco tenha se perdido no caminho. Usa o acumulador LOCAL
+            // (stale closure do estado apagava a resposta), depois o
+            // texto parcial, e so por ultimo o fallback vazio.
+            const final = (dados?.reply && String(dados.reply).trim())
+              ? dados.reply
+              : (textoAcumulado && textoAcumulado.trim() ? textoAcumulado : '');
+            if (!final.trim()) {
+              // done sem texto: nao some com a conversa, mostra erro
+              // com "tentar de novo" em vez de bolha vazia.
+              diagTutor('onDone sem texto: mostrando erro');
+              setAiOffline(true);
+              setStatus('error');
+              setMessages((prev) => [
+                ...prev.filter((m) => m.id !== idProvisoria),
+                { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() },
+              ]);
+              setStreamText('');
+              return;
+            }
             setMessages((prev) => {
               const existe = prev.some((m) => m.id === idProvisoria);
               const base = existe
@@ -336,6 +375,7 @@ export default function TutorChat({
             setStatus('idle');
           },
           onError: (error) => {
+            clearTimeout(vigia);
             // Rate limit: mostra o tempo de espera e nao trata como falha.
             if (error?.status === 429 || error?.code === 'rate_limited') {
               setStatus('rate_limited');
@@ -345,10 +385,23 @@ export default function TutorChat({
             setAiOffline(true);
             setStatus('error');
             setMessages((prev) => {
+              // Se ja chegou texto parcial, ele continua na bolha da
+              // tutora: nao apagamos o que a aluna ja leu. So adicionamos
+              // o aviso quando NAO chegou nada (bolha vazia nao ajuda).
+              if (textoAcumulado && textoAcumulado.trim()) {
+                return prev.map((m) => (
+                  m.id === idProvisoria
+                    ? { ...m, content: textoAcumulado, at: Date.now(), streaming: false }
+                    : m
+                ));
+              }
               const temProvisoria = prev.some((m) => m.id === idProvisoria);
               // Texto parcial continua util: nao apagamos o que a aluna leu.
               const aviso = { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() };
-              return temProvisoria ? [...prev, aviso] : [...prev, aviso];
+              if (!temProvisoria) return [...prev, aviso];
+              return prev.map((m) => (m.id === idProvisoria
+                ? { ...m, content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now(), streaming: false }
+                : m));
             });
             if (recebeuAlgo) setStreamText('');
           },

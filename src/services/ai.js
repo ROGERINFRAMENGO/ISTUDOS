@@ -475,12 +475,20 @@ export async function streamTutor({ messages, context, conversationId }, handler
     diag('fetch:resposta', `http=${response.status} ct=${response.headers.get('content-type')} body=${Boolean(response.body)}`);
 
     // Erro antes de comecar o stream: o corpo ainda e JSON comum.
-    if (!response.ok && (response.headers.get('content-type') || '').includes('application/json')) {
-      const payload = await response.json().catch(() => null);
+    // CORRECAO (30/09/2026): antes so tratava erro quando o Content-Type
+    // era application/json. Um 401/429/5xx com corpo vazio ou text/plain
+    // caia no parser SSE, nenhum onDone/onError era chamado e a tela
+    // ficava em "Respondendo..." para sempre.
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      const payload = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : null;
       const error = new Error(payload?.message || AI_MESSAGES.offline);
       error.status = response.status;
-      error.code = payload?.error ?? 'http_error';
+      error.code = response.status === 429 ? 'rate_limited' : (payload?.error ?? 'http_error');
       error.retryAfterMs = payload?.retryAfterMs ?? null;
+      diag('fetch:erro-http', `http=${response.status} code=${error.code}`);
       onError?.(error);
       return;
     }
@@ -495,58 +503,93 @@ export async function streamTutor({ messages, context, conversationId }, handler
     diag('reader:ok');
     const decoder = new TextDecoder();
     let buffer = '';
-    let evento = null;
     let acumulado = '';
     let encerrou = false;
     let recebeuDiagDelta = false;
     let leituras = 0;
 
+    // Processa um bloco SSE completo ("event: ...\ndata: {...}").
+    // O nome do evento vale so para o bloco atual: cada bloco completo
+    // e resetado, entao um delta nunca e tratado como start/done.
+    // (Evento dividido em dois chunks fica no buffer ate completar,
+    // entao o reset por bloco nao quebra esse caso.)
+    const processarBloco = (bloco) => {
+      let evento = null;
+      for (const linha of bloco.split('\n')) {
+        const limpa = linha.trim();
+        if (limpa.startsWith('event:')) {
+          evento = limpa.slice(6).trim();
+          continue;
+        }
+        if (!limpa.startsWith('data:')) continue;
+        let dados;
+        try {
+          dados = JSON.parse(limpa.slice(5).trim());
+        } catch {
+          continue;
+        }
+        if (!evento) continue;
+        if (evento === 'start') {
+          diag('evento:start');
+          onStart?.(dados);
+        } else if (evento === 'delta') {
+          acumulado += dados.text ?? '';
+          if (!recebeuDiagDelta) {
+            recebeuDiagDelta = true;
+            diag('evento:delta-primeiro', `len=${dados.text?.length ?? 0}`);
+          }
+          onDelta?.(dados.text ?? '', acumulado);
+        } else if (evento === 'done') {
+          encerrou = true;
+          diag('evento:done', `reply=${dados?.reply?.length ?? 0} model=${dados?.model ?? '-'}`);
+          onDone?.(dados);
+        } else if (evento === 'error') {
+          const error = new Error(dados.message || AI_MESSAGES.offline);
+          error.code = dados.error ?? 'tutor_error';
+          error.status = 502;
+          encerrou = true;
+          diag('evento:error', `${error.code} ${String(dados.message ?? '').slice(0, 90)}`);
+          onError?.(error);
+        }
+      }
+    };
+
     while (!encerrou) {
       const { done, value } = await reader.read();
       leituras += 1;
-      if (done) { diag('reader:fechou', `leituras=${leituras} buffer=${buffer.length}`); break; }
+      if (done) {
+        diag('reader:fechou', `leituras=${leituras} buffer=${buffer.length}`);
+        break;
+      }
       buffer += decoder.decode(value, { stream: true });
       const blocos = buffer.split('\n\n');
       buffer = blocos.pop() ?? '';
 
       for (const bloco of blocos) {
-        for (const linha of bloco.split('\n')) {
-          const limpa = linha.trim();
-          if (limpa.startsWith('event:')) {
-            evento = limpa.slice(6).trim();
-            continue;
-          }
-          if (!limpa.startsWith('data:')) continue;
-          let dados;
-          try {
-            dados = JSON.parse(limpa.slice(5).trim());
-          } catch {
-            continue;
-          }
-          if (evento === 'start') {
-            diag('evento:start');
-            onStart?.(dados);
-          } else if (evento === 'delta') {
-            acumulado += dados.text ?? '';
-            if (!recebeuDiagDelta) {
-              recebeuDiagDelta = true;
-              diag('evento:delta-primeiro', `len=${dados.text?.length ?? 0}`);
-            }
-            onDelta?.(dados.text ?? '', acumulado);
-          } else if (evento === 'done') {
-            encerrou = true;
-            diag('evento:done', `reply=${dados?.reply?.length ?? 0} model=${dados?.model ?? '-'}`);
+        processarBloco(bloco);
+        if (encerrou) break;
+      }
+    }
 
-            onDone?.(dados);
-          } else if (evento === 'error') {
-            const error = new Error(dados.message || AI_MESSAGES.offline);
-            error.code = dados.error ?? 'tutor_error';
-            error.status = 502;
-            encerrou = true;
-            diag('evento:error', `${error.code} ${String(dados.message ?? '').slice(0, 90)}`);
-            onError?.(error);
-          }
-        }
+    // CORRECAO (30/09/2026): o ultimo evento pode chegar junto com o
+    // fechamento do stream, sem o "\n\n" final - ele ficava preso no
+    // buffer e o onDone nunca era chamado (tela em "Respondendo...").
+    if (!encerrou && buffer.trim()) {
+      diag('buffer:restante', `len=${buffer.length}`);
+      processarBloco(buffer);
+      buffer = '';
+    }
+
+    // CORRECAO (30/09/2026): o stream fechou sem done/error (rede cortou,
+    // gateway matou a conexao). Antes nenhum handler era chamado e a tela
+    // travava em "Respondendo...". Se ja chegou texto parcial, entregamos
+    // como resposta final; senao, erro para a UI mostrar "tentar de novo".
+    if (!encerrou) {
+      diag('stream:fechou-sem-done', `acumulado=${acumulado.length}`);
+      if (acumulado.trim()) {
+        onDone?.({ reply: acumulado, model: null, conversationId, parcial: true });
+      } else {
+        onError?.(new Error(AI_MESSAGES.offline));
       }
     }
   } catch (error) {
