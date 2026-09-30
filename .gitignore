@@ -5,3 +5,9 @@ dist/
 !.env.example
 .DS_Store
 npm-debug.log*
+
+# Artefatos locais da FASE 2 (sessao anonima em cache e saida dos testes)
+
+scripts/.tutor-sessao.json
+scripts/.tutor-resultado.txt
+scripts/.tutor-erro.txt

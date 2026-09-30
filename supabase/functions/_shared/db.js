@@ -17,6 +17,8 @@ export class DbError extends Error {
 
 const LESSONS_TABLE = "generated_lessons";
 const QUIZZES_TABLE = "generated_quizzes";
+const TUTOR_CONVERSATIONS_TABLE = "tutor_conversations";
+const TUTOR_MESSAGES_TABLE = "tutor_messages";
 
 /**
  * Chave logica da aula: abrir a mesma aula de novo nunca gera outra.
@@ -146,6 +148,79 @@ export function createDb({ url, anonKey, token }) {
         limit: String(limit),
       });
       return (rows ?? []).map((row) => row.lesson_id);
+    },
+
+    // -------------------------------------------------------
+    // Tutor IA (FASE 2) — historico do chat
+    // -------------------------------------------------------
+
+    /**
+     * Conversa ativa do usuario para (materia, tema). O indice unique
+     * garante uma so: reabrir o chat na mesma aula nao duplica. Fora
+     * da aula, subject/topic vazios = conversa geral.
+     */
+    async findOrCreateConversation({ userId, subject = "", topic = "", title, lessonId = null }) {
+      const filtros = {
+        user_id: `eq.${userId}`,
+        subject: subject ? `eq.${subject}` : "is.null",
+        topic: topic ? `eq.${topic}` : "is.null",
+        limit: "1",
+      };
+      const existente = (await select(TUTOR_CONVERSATIONS_TABLE, "id,title,subject,topic", filtros))?.[0];
+      if (existente) return existente;
+
+      // Duas abas podem chegar juntas: o unique index segura, entao
+      // tentamos inserir e, se falhar, releemos a que ficou.
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        const criadas = await request(TUTOR_CONVERSATIONS_TABLE, {
+          method: "POST", prefer: "resolution=ignore-duplicates,return=representation",
+          body: {
+            user_id: userId,
+            title: String(title || topic || subject || "Conversa com a Tutora").slice(0, 90),
+            subject: subject || null,
+            topic: topic || null,
+            lesson_id: lessonId ?? null,
+          },
+        });
+        if (criadas?.[0]) return criadas[0];
+        const again = (await select(TUTOR_CONVERSATIONS_TABLE, "id,title,subject,topic", filtros))?.[0];
+        if (again) return again;
+      }
+      return null;
+    },
+
+    async listConversations(userId, limit = 20) {
+      const rows = await select(TUTOR_CONVERSATIONS_TABLE, "id,title,subject,topic,updated_at", {
+        user_id: `eq.${userId}`, order: "updated_at.desc", limit: String(limit),
+      });
+      return rows ?? [];
+    },
+
+    async recentMessages(conversationId, limit = 40) {
+      const rows = await select(TUTOR_MESSAGES_TABLE, "id,role,content,model,created_at", {
+        conversation_id: `eq.${conversationId}`, order: "created_at.asc", limit: String(limit),
+      });
+      return rows ?? [];
+    },
+
+    /** Grava a mensagem. O user_id vem do token, nunca do body. */
+    async saveMessage({ userId, conversationId, role, content, model = null }) {
+      const rows = await request(TUTOR_MESSAGES_TABLE, {
+        method: "POST", prefer: "return=representation",
+        body: { user_id: userId, conversation_id: conversationId, role, content, model },
+      });
+      // Mantem a conversa no topo do historico.
+      await request(TUTOR_CONVERSATIONS_TABLE, {
+        method: "PATCH", query: `?id=eq.${conversationId}`,
+        body: { updated_at: new Date().toISOString() },
+      });
+      return rows?.[0] ?? null;
+    },
+
+    async deleteConversation({ userId, conversationId }) {
+      return request(TUTOR_CONVERSATIONS_TABLE, {
+        method: "DELETE", query: `?id=eq.${conversationId}&user_id=eq.${userId}`,
+      });
     },
   };
 }

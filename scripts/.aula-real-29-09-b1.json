@@ -4,80 +4,80 @@
     "topic": "informação explícita",
     "subject": "Português",
     "summary": [
-      "Informação explícita é o que o texto diz diretamente e pode ser copiada",
+      "Informação explícita é o que o texto diz diretamente e pode ser localizada",
       "Informação implícita é o que se conclui a partir de pistas do texto",
-      "Compreensão é entender o dito literalmente, interpretação é dar sentido e intenção",
-      "Em prova, justifique a correta e explique por que as demais estão erradas"
+      "Compreensão é captar o sentido literal, interpretação é inferir consequências",
+      "Justificar a alternativa correta e refutar as erradas evita erro na prova da Etec"
     ],
     "sections": [
       {
         "title": "Informação explícita",
         "examples": [
           {
-            "problem": "Texto: 'A biblioteca funciona de segunda a sexta, das 8h às 18h. Aos sábados, abre até as 12h.' Pergunta: Em que dias a biblioteca funciona?",
-            "solution": "De segunda a sexta e aos sábados.",
-            "explanation": "A resposta está escrita literalmente. O texto diz 'de segunda a sexta' e 'Aos sábados'. É informação explícita porque não precisa inferir nada. Se a alternativa dissesse 'aos domingos', estaria errada porque o texto não menciona domingo."
+            "problem": "Texto: A biblioteca da escola funciona de segunda a sexta, das 7h às 18h. Nos sábados, o atendimento é das 8h às 12h. Qual é o horário de funcionamento da biblioteca na segunda-feira?",
+            "solution": "O texto diz que de segunda a sexta o funcionamento é das 7h às 18h. Segunda-feira está dentro de segunda a sexta. Portanto o horário é das 7h às 18h.",
+            "explanation": "A informação está explícita na primeira frase. A palavra-chave é segunda-feira. O texto traz o intervalo segunda a sexta das 7h às 18h. Não é preciso inferir, apenas localizar."
           }
         ],
-        "explanation": "Informação explícita é o que o texto diz de forma direta, sem precisar adivinhar. É dado com palavras claras. Para achar, faça 3 passos: 1. Leia a frase com atenção. 2. Pergunte: o autor escreveu isso com as próprias palavras? 3. Copie a resposta literal do texto. Exemplo de uso em prova: se a pergunta pede 'segundo o texto', a resposta está escrita nele. Não invente. Informação explícita aparece em definições, datas, números, nomes e afirmações diretas. É a base da compreensão literal. Quando a alternativa repete com outras palavras o que está escrito, ela costuma estar correta. Se a alternativa acrescenta ideia nova, está errada."
+        "explanation": "Informação explícita é o que o texto diz de forma direta, sem precisar adivinhar. É um dado que está escrito literalmente e pode ser localizado com os olhos. Para encontrar, faça três passos. Primeiro, leia a pergunta e identifique a palavra-chave. Segundo, procure no texto a mesma palavra ou sinônimo. Terceiro, copie com suas palavras a resposta que está escrita. Informação explícita não pede conclusão, pede localização. Exemplo clássico é data, nome, número, definição apresentada. Não confunda com detalhe que parece óbvio, mas não está escrito. Se o texto não traz, não é explícito. Essa habilidade é base da compreensão literal exigida nas provas."
       },
       {
         "title": "Informação implícita",
         "examples": [
           {
-            "problem": "Texto: 'João chegou atrasado à prova e pediu desculpas ao professor. Ele disse que o ônibus quebrou.' Pergunta: O que pode ser inferido sobre o atraso de João?",
-            "solution": "O atraso de João teve uma causa externa, não foi por descuido dele.",
-            "explanation": "O texto não diz 'João não teve culpa'. Mas ele informa que o ônibus quebrou e que João pediu desculpas. A junção das pistas permite inferir que o motivo foi o ônibus. É implícito porque não está escrito 'João não é culpado', mas é a conclusão mais lógica a partir do texto."
+            "problem": "Texto: João chegou atrasado à prova e pediu para entrar. O professor negou e disse que a regra é clara para todos. O que se pode inferir sobre a atitude do professor?",
+            "solution": "Pelo texto, o professor manteve a regra mesmo com o pedido de João. Isso mostra que ele agiu com imparcialidade e respeito à norma, não fazendo exceção.",
+            "explanation": "A palavra clara para todos e o fato de negar a entrada são pistas. Não está escrito imparcial, mas a conduta descrita permite inferir isso. É informação implícita sustentada."
           }
         ],
-        "explanation": "Informação implícita é o que o texto não diz diretamente, mas permite concluir a partir de pistas. É uma inferência. Para achar, faça 3 passos: 1. Leia o que está explícito. 2. Observe palavras como 'apesar', 'porque', 'então', 'sinal de'. 3. Conecte ideias e conclua o que está subentendido. Informação implícita exige raciocínio, mas não pode inventar. A conclusão precisa ser obrigatória pelas pistas do texto. Em prova, a alternativa correta de inferência é aquela que todas as pistas apontam. Se uma alternativa pode ser verdadeira, mas não é necessária, está errada. Cuidado para não trazer conhecimento externo."
+        "explanation": "Informação implícita é o que o texto não diz diretamente, mas permite concluir a partir de pistas. É uma ideia que está subentendida, sugerida por palavras, contexto ou lógica. Para encontrar, faça três passos. Primeiro, leia todo o trecho para captar o sentido geral. Segundo, identifique pistas como expressões de causa, consequência, comparação ou descrição de atitude. Terceiro, una as pistas e formule a conclusão com base no texto, sem inventar fatos externos. Informação implícita exige inferência segura, não opinião pessoal. Se a conclusão não puder ser sustentada por trechos do texto, ela é inválida para a prova."
       },
       {
         "title": "Compreensão e interpretação",
         "examples": [
           {
-            "problem": "Texto: 'A campanha pede para reduzir o uso de sacolas plásticas. Lojas oferecem desconto para quem leva sacola retornável.' Pergunta: Qual a interpretação da campanha? a) Quer lucrar com sacolas b) Quer incentivar consumo consciente c) Quer proibir compras d) Quer aumentar lixo",
-            "solution": "b) Quer incentivar consumo consciente",
-            "explanation": "Compreensão: o texto diz que pede redução de sacolas plásticas e dá desconto para sacola retornável. Interpretação: a intenção é incentivar comportamento mais sustentável. a) está errada porque não fala de lucro. c) está errada porque não fala em proibir compras. d) está errada porque o texto quer reduzir lixo, não aumentar."
+            "problem": "Texto: A campanha recolheu 200 litros de óleo usado e evitou que fossem despejados no rio. Alternativas: A) A campanha protege o meio ambiente. B) O óleo foi jogado no rio. C) Foram recolhidos 500 litros. D) A campanha ocorreu no mar. Qual alternativa mostra interpretação correta e por que?",
+            "solution": "A alternativa correta é A. A campanha protege o meio ambiente porque evitar o despejo no rio reduz poluição. B está errada porque o texto diz que evitou o despejo. C está errada porque o valor é 200 litros. D está errada porque não há menção ao mar.",
+            "explanation": "A é interpretação, pois conclui proteção ambiental a partir da ação descrita. As demais contradizem ou acrescentam dados que não existem no texto."
           }
         ],
-        "explanation": "Compreensão é entender o que o texto diz, tanto explícito quanto implícito, de forma literal. É responder com base no texto. Interpretação é dar sentido ao texto, relacionar ideias, perceber intenção, tom e consequência. Na prática: compreensão responde 'o que' e 'como'. Interpretação responde 'por quê' e 'para quê'. Em questões de múltipla escolha, primeiro elimine alternativas que contradizem o texto. Depois escolha a que melhor resume a ideia. Ao justificar, explique por que a correta está certa e por que as outras estão erradas: uma distorce, outra acrescenta informação externa, outra inverte sentido. Isso evita chute."
+        "explanation": "Compreensão é entender o que o texto diz de forma literal, ou seja, captar o sentido explícito e organizar as ideias principais. Interpretação é ir além, relacionar ideias, inferir intenções, consequências e sentido implícito. Na prova da Etec a diferença aparece nas alternativas. Para compreensão, a resposta está no texto. Para interpretação, a resposta é uma conclusão lógica do texto. Ao escolher a alternativa correta, explique por que ela está certa e por que as outras estão erradas. Isso evita chute. Alternativas erradas costumam distorcer, generalizar demais ou trazer informação externa."
       }
     ],
     "objectives": [
-      "Distinguir informação explícita da implícita em textos curtos",
-      "Identificar o que o texto diz diretamente e o que precisa ser inferido",
-      "Aplicar compreensão e interpretação com justificativa das alternativas"
+      "Distinguir informação explícita de informação implícita em textos curtos",
+      "Aplicar compreensão literal e interpretação inferencial com justificativa",
+      "Justificar por que uma alternativa está correta e as demais estão erradas"
     ],
-    "introduction": "Olá! Hoje é 29/09, semana 1 dia 2, bloco 1 de 2. Vamos trabalhar Português em 55 minutos. O foco é informação explícita e implícita, e depois separar compreensão de interpretação. Vamos usar textos curtos e etapas numeradas para caber no tempo. O essencial fica para hoje e o que for mais avançado deixamos para revisão amanhã.",
+    "introduction": "Hoje você vai aprender a ler com precisão. Em 55 minutos vamos focar no essencial de informação explícita e implícita, e depois separar compreensão de interpretação. O objetivo é chegar ao nível da prova da Etec sem excesso de texto. Usaremos exemplos curtos e etapas numeradas para caber no bloco. O que não couber agora fica para revisão amanhã.",
     "commonMistakes": [
-      "Confundir informação implícita com opinião pessoal e trazer conhecimento externo",
-      "Achar que interpretação é sinônimo de inventar detalhes que não estão no texto",
-      "Escolher alternativa que parece correta mas contradiz uma informação explícita do texto"
+      "Confundir opinião pessoal com informação implícita sustentada pelo texto",
+      "Achar que informação explícita precisa de explicação, quando basta localizar",
+      "Escolher alternativa que acrescenta dado externo não presente no texto"
     ],
     "guidedPractice": [
       {
-        "hint": "Procure o que está escrito literalmente, sem concluir nada.",
-        "answer": "O parque fecha às 17h e não é permitido alimentar os animais.",
-        "question": "Texto: 'O parque fecha às 17h. Na entrada, um aviso diz: não é permitido alimentar os animais.' Qual informação é explícita?",
-        "explanation": "Ambas as informações estão escritas diretamente no texto. É explícito porque você pode copiar do texto."
+        "hint": "Procure o que está escrito literalmente sobre o horário e o dia de gratuidade.",
+        "answer": "O museu abre às 9h e fecha às 17h, e a entrada é gratuita às quartas.",
+        "question": "Texto: O museu abre às 9h e fecha às 17h. A entrada é gratuita às quartas. Qual informação é explícita?",
+        "explanation": "São dados diretos do texto, sem necessidade de inferência. É informação explícita localizada."
       },
       {
-        "hint": "O que a relação entre estudar e nota sugere?",
-        "answer": "Que o estudo intenso contribuiu para a boa nota.",
-        "question": "Texto: 'Maria estudou a noite toda e tirou nota máxima.' O que é implícito?",
-        "explanation": "O texto não diz 'por causa do estudo'. Mas a sequência 'estudou a noite toda e tirou nota máxima' permite inferir relação de causa. É implícito."
+        "hint": "Relacione pouco sono com desempenho na prova.",
+        "answer": "Pode-se inferir que Ana estava bem preparada e concentrada, apesar do pouco sono.",
+        "question": "Texto: Ana estudou a noite toda e dormiu apenas três horas. Na prova, ela respondeu rápido e sem erros. O que se pode inferir sobre Ana?",
+        "explanation": "O texto não diz preparada, mas a rapidez e ausência de erros após estudar a noite toda permitem essa inferência segura."
       },
       {
-        "hint": "Interpretação busca intenção. Por que proibir alimentar?",
-        "answer": "a) O parque quer proteger os animais",
-        "question": "Com base no texto do parque, qual interpretação é correta? a) O parque quer proteger os animais b) O parque abre até tarde c) Alimentar animais é recomendado d) O aviso é sobre horário",
-        "explanation": "Compreensão mostra a proibição. Interpretação conclui que a intenção é proteger os animais, pois alimentação pode prejudicá-los. b) errada, fecha às 17h. c) errada, é proibido. d) errada, aviso é sobre alimentação."
+        "hint": "Verifique qual conclusão é sustentada e quais contradizem o texto.",
+        "answer": "A está correta. B está errada porque as lixeiras são novas. C está errada porque a coleta é diária. D está errada porque há menos lixo.",
+        "question": "Texto: O bairro recebeu lixeiras novas e a coleta passou a ser diária. Nas ruas, há menos lixo acumulado. Qual alternativa interpreta corretamente? A) O bairro ficou mais limpo. B) As lixeiras são antigas. C) A coleta é semanal. D) O lixo aumentou.",
+        "explanation": "Interpretação correta relaciona lixeiras novas e coleta diária com menos lixo acumulado, indicando bairro mais limpo."
       }
     ],
     "estimatedMinutes": 55
   },
-  "id": "e4c5d5bc-153e-43c9-afbc-7b9ab6eb702d",
+  "id": "fddf2d96-81f9-49df-bdcc-52bf6a066377",
   "cached": false,
   "model": "meta/muse-glimmer-30b"
 }

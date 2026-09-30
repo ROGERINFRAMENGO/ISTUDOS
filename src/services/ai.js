@@ -382,3 +382,113 @@ export async function regenerateLessonForPlan(plan, { performance = null, onStat
 export async function callTutor({ messages, context }) {
   return callFunction('tutor', { messages, context }, 90000);
 }
+
+/**
+ * Chat da Tutora IA (Gemini) com STREAMING (FASE 2).
+ *
+ * A resposta chega em pedacos (SSE) e onDelta e chamado conforme o texto
+ * chega, para a tela mostrar a resposta crescendo. A chave do Gemini
+ * NUNCA passa pelo navegador: ela e secret da Edge Function.
+ *
+ * Importante: a conexao SSE fica aberta (keep-alive), entao encerramos
+ * no evento done/error em vez de esperar o fim do corpo. Sem isso a
+ * interface ficaria travada em "Respondendo..." para sempre.
+ */
+export async function streamTutor({ messages, context, conversationId }, handlers = {}) {
+  const { onDelta, onDone, onError, onStart } = handlers;
+  const token = await ensureAiSession();
+  if (!token) {
+    const error = new Error(AI_MESSAGES.noSession);
+    error.status = 401;
+    onError?.(error);
+    return;
+  }
+
+  const controller = new AbortController();
+  let reader = null;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/tutor-chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ messages, context, conversationId, stream: true }),
+      signal: controller.signal,
+    });
+
+    // Erro antes de comecar o stream: o corpo ainda e JSON comum.
+    if (!response.ok && (response.headers.get('content-type') || '').includes('application/json')) {
+      const payload = await response.json().catch(() => null);
+      const error = new Error(payload?.message || AI_MESSAGES.offline);
+      error.status = response.status;
+      error.code = payload?.error ?? 'http_error';
+      error.retryAfterMs = payload?.retryAfterMs ?? null;
+      onError?.(error);
+      return;
+    }
+
+    if (!response.body) {
+      onError?.(new Error('Este navegador nao suporta leitura em streaming.'));
+      return;
+    }
+
+    reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let evento = null;
+    let acumulado = '';
+    let encerrou = false;
+
+    while (!encerrou) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const blocos = buffer.split('\n\n');
+      buffer = blocos.pop() ?? '';
+
+      for (const bloco of blocos) {
+        for (const linha of bloco.split('\n')) {
+          const limpa = linha.trim();
+          if (limpa.startsWith('event:')) {
+            evento = limpa.slice(6).trim();
+            continue;
+          }
+          if (!limpa.startsWith('data:')) continue;
+          let dados;
+          try {
+            dados = JSON.parse(limpa.slice(5).trim());
+          } catch {
+            continue;
+          }
+          if (evento === 'start') {
+            onStart?.(dados);
+          } else if (evento === 'delta') {
+            acumulado += dados.text ?? '';
+            onDelta?.(dados.text ?? '', acumulado);
+          } else if (evento === 'done') {
+            encerrou = true;
+            onDone?.(dados);
+          } else if (evento === 'error') {
+            const error = new Error(dados.message || AI_MESSAGES.offline);
+            error.code = dados.error ?? 'tutor_error';
+            error.status = 502;
+            encerrou = true;
+            onError?.(error);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    if (error?.name === 'AbortError') return;
+    onError?.(error);
+  } finally {
+    controller.abort();
+    try {
+      await reader?.cancel();
+    } catch {
+      // corpo ja fechado
+    }
+  }
+}

@@ -1,50 +1,54 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { askTutor, AI_DISCONNECTED_MESSAGE, isAiConfigured } from '../services/aiChat';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  askTutorStream,
+  AI_DISCONNECTED_MESSAGE,
+  AI_RATE_LIMIT_MESSAGE,
+  isAiConfigured,
+} from '../services/aiChat';
 import { buildSimulado, loadSimulados, parseSimuladoIntent, saveSimulados } from '../services/simulados';
 import { isSyncConfigured, mergeChat, nowIso, pullShared, pushShared } from '../services/sync';
 import { subjects } from '../data/mockData';
 import { DAY_LABELS, formatDateBR, getDateKey, getDayKey } from '../data/lessons';
 
 // ============================================================
-// TutorChat — o chat da Tutora IA em componente reutilizável
-// ============================================================
+// TutorChat - o chat da Tutora IA em componente reutilizavel
+// ------------------------------------------------------------
 // Usado em dois lugares:
 //  1. Aba "Tutor IA" (AiChatPage)
-//  2. Dentro da lição (LessonPage), para tirar dúvidas do conteúdo
-// Quando recebe `lessonContext`, a IA passa a responder sobre a lição aberta.
+//  2. Dentro da licao (LessonPage), para tirar duvidas do conteudo
+// Quando recebe `lessonContext`, a IA responde sobre a licao aberta.
+//
+// FASE 2: a resposta chega em STREAMING (o texto cresce na tela).
+// Estados: EMPTY, GENERATING, STREAMING, SUCCESS, ERROR, RATE_LIMITED.
 
 const CHAT_STORAGE_KEY = 'istudos_chat_history';
 
 export const CHAT_SUGGESTIONS = [
   'O que eu estudo hoje?',
-  'Como está minha sequência?',
-  'Quanto XP eu tenho?',
-  'Me dá uma dica de interpretação',
+  'Como esta minha sequencia?',
+  'Me explica o que eu ainda nao entendi',
+  'Me da um exemplo',
 ];
 
-// Sugestões focadas no conteúdo, para quem está no meio da lição.
+// Sugestoes focadas no conteudo, para quem esta no meio da licao.
 export const LESSON_SUGGESTIONS = [
-  'Explique essa aula de novo, mais devagar',
-  'Me dá um exemplo parecido com o da aula',
-  'Quais são os erros mais comuns nesse tema?',
-  'Me faz uma pergunta para eu treinar',
+  'Explica essa parte de novo, mais devagar',
+  'Me da um exemplo parecido com o da aula',
+  'Quais sao os erros mais comuns nesse tema?',
+  'Me faz uma pergunta parecida pra eu treinar',
 ];
 
 function welcomeMessage(lessonContext) {
   if (lessonContext) {
     return {
       role: 'assistant',
-      content: `Oi! Eu sou sua Tutora IA 💜\n\nEstou aqui do seu lado nesta aula de ${lessonContext.subject} — ${lessonContext.topic}. Se travar em alguma parte do texto, do vídeo ou de uma questão, é só me perguntar que eu explico com outras palavras.`,
+      content: `Oi! Eu sou sua Tutora IA\n\nEstou aqui do seu lado nesta aula de ${lessonContext.subject} - ${lessonContext.topic}. Se travar em alguma parte do texto ou de uma questao, e so me perguntar que eu explico com outras palavras.`,
       at: Date.now(),
     };
   }
-
-  const mode = isAiConfigured
-    ? 'Estou conectada e pronta para te ajudar a estudar.'
-    : 'Ainda estou em modo demonstração (sem modelo de IA conectado), mas já sei responder sobre o seu progresso no site.';
   return {
     role: 'assistant',
-    content: `Oi! Eu sou sua Tutora IA 💜\n\n${mode}\n\nPode perguntar sobre o cronograma, o que estudar hoje, seu XP ou qualquer dúvida de estudo.`,
+    content: 'Oi! Eu sou sua Tutora IA\n\nPode perguntar sobre o cronograma, o que estudar hoje, seu XP ou qualquer duvida de estudo. Se nao entender alguma coisa, me fala que eu explico de outro jeito.',
     at: Date.now(),
   };
 }
@@ -90,15 +94,21 @@ export default function TutorChat({
 }) {
   const [messages, setMessages] = useState(() => loadChat() || [welcomeMessage(lessonContext)]);
   const [input, setInput] = useState('');
-  const [isThinking, setIsThinking] = useState(false);
+  // 'idle' | 'generating' | 'streaming' | 'error' | 'rate_limited'
+  const [status, setStatus] = useState('idle');
+  const [streamText, setStreamText] = useState('');
   const [aiOffline, setAiOffline] = useState(false);
+  const [conversationId, setConversationId] = useState(null);
+  const [retryAfter, setRetryAfter] = useState(0);
   const listRef = useRef(null);
+
+  const isThinking = status === 'generating' || status === 'streaming';
 
   useEffect(() => {
     saveChat(messages);
   }, [messages]);
 
-  // ---------- Sincronização do chat entre celular e computador ----------
+  // ---------- Sincroniza o chat entre celular e computador ----------
   const [syncReady, setSyncReady] = useState(!isSyncConfigured);
   const lastPushedRef = useRef('');
 
@@ -108,9 +118,7 @@ export default function TutorChat({
 
     const boot = async () => {
       const remote = await pullShared();
-      if (cancelled) {
-        return;
-      }
+      if (cancelled) return;
       const remoteChat = remote?.data?.chat;
       if (Array.isArray(remoteChat) && remoteChat.length) {
         setMessages((prev) => mergeChat(prev, remoteChat));
@@ -133,7 +141,6 @@ export default function TutorChat({
     const timer = setTimeout(async () => {
       const result = await pushShared({ chat: messages }, { chat: nowIso() });
       lastPushedRef.current = serialized;
-      // Se a conversa do outro aparelho for mais nova, ela vence aqui também.
       const remoteChat = result?.data?.chat;
       if (Array.isArray(remoteChat) && remoteChat.length) {
         setMessages((prev) => mergeChat(prev, remoteChat));
@@ -144,14 +151,15 @@ export default function TutorChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncReady, messages]);
 
+  // Rola para o fim a cada pedaco novo: o texto tem que crescer visivel.
   useEffect(() => {
     const node = listRef.current;
     if (node) node.scrollTop = node.scrollHeight;
-  }, [messages, isThinking]);
+  }, [messages, streamText, isThinking]);
 
-  // Contexto do site enviado junto com a conversa: é o que permite a IA falar
-  // "você está com 7 dias de sequência" em vez de respostas genéricas. Com
-  // `lessonContext`, ela também sabe qual lição está aberta agora.
+  // ---------- Contexto MINIMO enviado a tutora ----------
+  // So o que ajuda a responder: quem e a aluna, o plano de hoje e a
+  // licao aberta. Nao mandamos o cronograma inteiro nem todas as aulas.
   const context = useMemo(() => {
     const dateKey = getDateKey(new Date());
     return {
@@ -184,27 +192,45 @@ export default function TutorChat({
         name: subject.name,
         progress: subject.progress,
       })),
+      // Contexto da licao: materia, tema, secao e exercicio atual.
+      subject: lessonContext?.subject ?? undefined,
+      topic: lessonContext?.topic ?? undefined,
+      lessonId: lessonContext?.lessonId ?? null,
       lesson: lessonContext || undefined,
     };
   }, [studentState, todayLessons, completedLessonIds, lessonContext]);
 
+  // Janela curta: o backend tem o historico completo, mas Mandar tudo
+  // a cada chamada so gastaria token. As ultimas 12 bastam para a
+  // conversa continuar ("e gene?" depois de "nao entendi DNA").
+  const janela = useMemo(
+    () => messages.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-12)
+      .map((m) => ({ role: m.role, content: m.content })),
+    [messages],
+  );
+
+  // ---------- Envio com streaming ----------
   const handleSend = async (text) => {
     const clean = String(text || '').trim();
     if (!clean || isThinking) return;
 
-    const nextMessages = [...messages, { role: 'user', content: clean, at: Date.now() }];
     setInput('');
+    setAiOffline(false);
+    setRetryAfter(0);
+    setStreamText('');
 
-    // Pedido de simulado/mini prova → cria na hora, sem depender da IA online.
+    const minhasMensagens = [...messages, { role: 'user', content: clean, at: Date.now() }];
+
+    // Simulado/mini prova e montado aqui mesmo, sem depender da IA.
     const intent = parseSimuladoIntent(clean);
     if (intent) {
       const sim = buildSimulado(intent);
       saveSimulados([sim, ...loadSimulados()]);
       setMessages([
-        ...nextMessages,
+        ...minhasMensagens,
         {
           role: 'assistant',
-          content: `Criei o simulado "${sim.title}" com ${sim.questions.length} questão(ões) 💪\n\nMatéria: ${sim.subject} · Dificuldade: ${sim.difficulty === 'qualquer' ? 'qualquer' : sim.difficulty}${sim.week ? ` · Semana ${sim.week} (conteúdo do cronograma)` : ''}.\n\nClique em "Abrir simulado" para começar agora!`,
+          content: `Criei o simulado "${sim.title}" com ${sim.questions.length} questao(oes).\n\nMateria: ${sim.subject} - Dificuldade: ${sim.difficulty}${sim.week ? ` - Semana ${sim.week} (conteudo do cronograma)` : ''}.\n\nClique em "Abrir simulado" para comecar agora!`,
           action: { type: 'create_simulado', id: sim.id, title: sim.title },
           at: Date.now(),
         },
@@ -212,41 +238,90 @@ export default function TutorChat({
       return;
     }
 
-    setMessages(nextMessages);
-    setIsThinking(true);
+    setMessages(minhasMensagens);
+    setStatus('generating');
+
+    // Mensagem provisoria que vai recebendo o texto do Gemini.
+    const idProvisoria = `parcial-${Date.now()}`;
+    let recebeuAlgo = false;
 
     try {
-      const reply = await askTutor({ messages: nextMessages, context });
-      let action = reply.action || null;
-      let content = reply.content;
-
-      // A IA pediu para criar um simulado → monta aqui e vira botão no chat.
-      if (action?.type === 'create_simulado') {
-        const sim = buildSimulado(action.params || {});
-        saveSimulados([sim, ...loadSimulados()]);
-        action = { type: 'create_simulado', id: sim.id, title: sim.title };
-        content = `${content}\n\n✅ Simulado "${sim.title}" criado com ${sim.questions.length} questões${sim.week ? ` (Semana ${sim.week})` : ''} — clique em "Abrir simulado".`;
-      }
-
-      setAiOffline(Boolean(reply.disconnected));
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content, action, disconnected: Boolean(reply.disconnected), at: Date.now() },
-      ]);
+      await askTutorStream(
+        { messages: [...janela, { role: 'user', content: clean }], context, conversationId },
+        {
+          onStart: () => setStatus('streaming'),
+          onDelta: (_pedaco, acumulado) => {
+            recebeuAlgo = true;
+            setStatus('streaming');
+            setStreamText(acumulado);
+            setMessages((prev) => {
+              const existe = prev.some((m) => m.id === idProvisoria);
+              if (existe) {
+                return prev.map((m) => (m.id === idProvisoria ? { ...m, content: acumulado } : m));
+              }
+              return [...prev, { id: idProvisoria, role: 'assistant', content: acumulado, at: Date.now() }];
+            });
+          },
+          onDone: (dados) => {
+            if (dados?.conversationId) setConversationId(dados.conversationId);
+            // O "done" leva o texto completo: reconcilia caso algum
+            // pedaco tenha se perdido no caminho.
+            const final = dados?.reply ?? streamText;
+            setMessages((prev) => {
+              const existe = prev.some((m) => m.id === idProvisoria);
+              const base = existe
+                ? prev.map((m) => (m.id === idProvisoria ? { ...m, content: final } : m))
+                : [...prev, { id: idProvisoria, role: 'assistant', content: final, at: Date.now() }];
+              return base.map((m) =>
+                m.id === idProvisoria ? { ...m, id: undefined, streaming: false, model: dados?.model } : m,
+              );
+            });
+            setStreamText('');
+            setStatus('idle');
+          },
+          onError: (error) => {
+            // Rate limit: mostra o tempo de espera e nao trata como falha.
+            if (error?.status === 429 || error?.code === 'rate_limited') {
+              setStatus('rate_limited');
+              setRetryAfter(error.retryAfterMs ?? 30000);
+              return;
+            }
+            setAiOffline(true);
+            setStatus('error');
+            setMessages((prev) => {
+              const temProvisoria = prev.some((m) => m.id === idProvisoria);
+              // Texto parcial continua util: nao apagamos o que a aluna leu.
+              const aviso = { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() };
+              return temProvisoria ? [...prev, aviso] : [...prev, aviso];
+            });
+            if (recebeuAlgo) setStreamText('');
+          },
+        },
+      );
     } catch {
-      // Erro inesperado fora do serviço → mesma mensagem de desconexão.
-      setAiOffline(true);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() },
-      ]);
-    } finally {
-      setIsThinking(false);
+      if (status !== 'rate_limited') {
+        setStatus('error');
+        setMessages((prev) => [...prev, {
+          role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now(),
+        }]);
+      }
     }
   };
 
   const clearChat = () => {
     setMessages([welcomeMessage(lessonContext)]);
+    setConversationId(null);
+    setStreamText('');
+    setStatus('idle');
+    setAiOffline(false);
+  };
+
+  // Reenvia a ultima pergunta depois de um erro (retry manual).
+  const retryLast = () => {
+    const ultima = [...messages].reverse().find((m) => m.role === 'user');
+    if (!ultima) return;
+    setMessages((prev) => prev.filter((m) => m.content !== ultima.content || m.role !== 'user'));
+    handleSend(ultima.content);
   };
 
   return (
@@ -255,7 +330,7 @@ export default function TutorChat({
         <h3>{title}</h3>
         <div className="chat-head-actions">
           <span className={`tag ${isAiConfigured && !aiOffline ? 'tag-hot' : ''}`}>
-            {!isAiConfigured ? '○ Modo demonstração' : aiOffline ? '○ IA desconectada' : '● IA conectada'}
+            {!isAiConfigured ? 'o Modo local' : aiOffline ? 'o IA instavel' : 'o IA conectada'}
           </span>
           {onClose && (
             <button type="button" className="ghost-button small-button chat-close" onClick={onClose}>
@@ -270,6 +345,7 @@ export default function TutorChat({
           <div key={`${message.at}-${index}`} className={`chat-message ${message.role}`}>
             <div className={`chat-bubble ${message.error ? 'chat-error' : ''}`}>
               {message.content}
+              {message.streaming && <span className="chat-caret" aria-hidden="true" />}
               {message.action?.type === 'create_simulado' && onOpenSimulado && (
                 <button
                   type="button"
@@ -280,13 +356,14 @@ export default function TutorChat({
                 </button>
               )}
               <small className="chat-meta">
-                {message.role === 'user' ? 'Você' : 'Tutora IA'} · {formatTime(message.at)}
+                {message.role === 'user' ? 'Voce' : 'Tutora IA'} - {formatTime(message.at)}
               </small>
             </div>
           </div>
         ))}
 
-        {isThinking && (
+        {/* GERATING: a aluna mandou e ainda nao chegou texto */}
+        {status === 'generating' && (
           <div className="chat-message assistant">
             <div className="chat-bubble">
               <span className="chat-typing">
@@ -295,6 +372,16 @@ export default function TutorChat({
                 <span />
                 pensando...
               </span>
+            </div>
+          </div>
+        )}
+
+        {/* RATE_LIMITED: espera o cooldown */}
+        {status === 'rate_limited' && (
+          <div className="chat-message assistant">
+            <div className="chat-bubble chat-error">
+              {AI_RATE_LIMIT_MESSAGE}
+              <small className="chat-meta">Espera {Math.ceil(retryAfter / 1000)}s para continuar</small>
             </div>
           </div>
         )}
@@ -340,9 +427,14 @@ export default function TutorChat({
         />
         <div className="chat-buttons">
           <button type="submit" className="primary-button chat-send" disabled={isThinking || !input.trim()}>
-            Enviar
+            {isThinking ? 'Respondendo...' : 'Enviar'}
           </button>
-          <button type="button" className="ghost-button chat-clear" onClick={clearChat}>
+          {status === 'error' && (
+            <button type="button" className="ghost-button chat-clear" onClick={retryLast}>
+              Tentar de novo
+            </button>
+          )}
+          <button type="button" className="ghost-button chat-clear" onClick={clearChat} disabled={isThinking}>
             Limpar
           </button>
         </div>
@@ -350,5 +442,3 @@ export default function TutorChat({
     </section>
   );
 }
-
-

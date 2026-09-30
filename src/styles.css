@@ -1735,3 +1735,20 @@ h1, h2, h3, h4, p {
     grid-template-columns: 1fr;
   }
 }
+
+/* Cursor de digitacao: mostra que o texto ainda esta chegando. */
+.chat-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: currentColor;
+  animation: chatBlink 0.9s steps(2, start) infinite;
+}
+
+@keyframes chatBlink {
+  to {
+    visibility: hidden;
+  }
+}
