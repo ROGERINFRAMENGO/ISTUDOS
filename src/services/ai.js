@@ -22,14 +22,31 @@ const MAX_LOCAL_ENTRIES = 40;
 const LESSON_TIMEOUT_MS = 150000;
 const QUIZ_TIMEOUT_MS = 120000;
 
+const DIAG_KEY = 'istudos_tutor_diag';
+
+// Limite para abrir a sessao anonima. Sem isso, uma rede lenta (ou a
+// cota de sessoes anonimas esgotada) trava a tela em 'Respondendo...'.
+const SESSION_TIMEOUT_MS = 12000;
+
+function diag(etapa, detalhe) {
+  try {
+    const antes = JSON.parse(localStorage.getItem(DIAG_KEY) || '[]');
+    const linha = `${new Date().toISOString().slice(11, 19)} ${etapa}${detalhe ? ` ${detalhe}` : ''}`;
+    const depois = [...antes, linha].slice(-40);
+    localStorage.setItem(DIAG_KEY, JSON.stringify(depois));
+    console.log('[tutor-diag]', linha);
+  } catch {
+    // diagnostico nunca pode quebrar o chat
+  }
+}
 let sessionToken = null;
 let sessionCheckedAt = 0;
 let blockReason = null;
 
 export const AI_MESSAGES = {
   noSession:
-    'A IA ainda nÃ£o estÃ¡ liberada neste aparelho: falta ativar o login anÃ´nimo no Supabase (Authentication â†’ Sign In â†’ Allow anonymous sign-ins).',
-  offline: 'A IA nÃ£o respondeu agora. Sua aula salva continua aqui â€” tente de novo em um minuto.',
+    'A IA ainda nÃƒÂ£o estÃƒÂ¡ liberada neste aparelho: falta ativar o login anÃƒÂ´nimo no Supabase (Authentication Ã¢â€ â€™ Sign In Ã¢â€ â€™ Allow anonymous sign-ins).',
+  offline: 'A IA nÃƒÂ£o respondeu agora. Sua aula salva continua aqui Ã¢â‚¬â€ tente de novo em um minuto.',
   generatingLesson: 'Gerando sua aula...',
   generatingQuiz: 'Preparando seu quiz...',
 };
@@ -53,6 +70,7 @@ export async function ensureAiSession({ force = false } = {}) {
   // Reaproveita o token por 5 minutos (evita leitura por chamada).
   if (!force && sessionToken && Date.now() - sessionCheckedAt < 300000) return sessionToken;
 
+  diag('sessao:inicio');
   try {
     // 1. Login de verdade aberto no app? Usa o token dessa pessoa.
     const main = await supabase.auth.getSession();
@@ -61,6 +79,7 @@ export async function ensureAiSession({ force = false } = {}) {
       blockReason = null;
       sessionToken = mainSession.access_token;
       sessionCheckedAt = Date.now();
+      diag('sessao:login-real');
       return sessionToken;
     }
 
@@ -69,25 +88,45 @@ export async function ensureAiSession({ force = false } = {}) {
     let session = data?.session ?? null;
 
     if (!session) {
-      const created = await aiSupabase.auth.signInAnonymously();
-      session = created.data?.session ?? null;
-      if (created.error && !session) {
-        blockReason = created.error.code === 'anonymous_provider_disabled' ? 'anonymous_disabled' : 'auth_error';
-        console.warn('[ai] sem sessao anonima:', created.error?.message ?? created.error);
+      // O BUG DESTE PASSO: signInAnonymously() e uma chamada de rede e
+      // pode demorar (ou travar) se a internet estiver instavel ou se o
+      // projeto tiver estourado a cota de sessoes anonimas. Sem este
+      // limite o await nunca resolve, nenhum handler e chamado, nada e
+      // logado e a tela fica em "Respondendo..." para sempre.
+      diag('sessao:criando-anonima');
+      const criada = await Promise.race([
+        aiSupabase.auth.signInAnonymously(),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error('timeout ao abrir sessao anonima')),
+            SESSION_TIMEOUT_MS,
+          ),
+        ),
+      ]);
+      session = criada.data?.session ?? null;
+      if (criada.error && !session) {
+        blockReason = criada.error.code === 'anonymous_provider_disabled' ? 'anonymous_disabled' : 'auth_error';
+        console.warn('[ai] sem sessao anonima:', criada.error?.message ?? criada.error);
+        diag(`sessao:falhou ${criada.error?.code ?? 'erro'}`);
         return null;
       }
+      diag('sessao:anonima-ok');
     }
     if (!session?.access_token) {
       blockReason = 'no_session';
+      diag('sessao:token-vazio');
       return null;
     }
     blockReason = null;
     sessionToken = session.access_token;
     sessionCheckedAt = Date.now();
+    diag('sessao:pronta');
     return sessionToken;
   } catch (error) {
-    console.warn('[ai] nao consegui abrir a sessao', error);
+    // Antes, uma falha aqui deixava a tela travada sem aviso nenhum.
     blockReason = 'auth_error';
+    console.warn('[ai] nao consegui abrir a sessao', error);
+    diag(`sessao:erro ${String(error?.message ?? error).slice(0, 60)}`);
     return null;
   }
 }
@@ -311,7 +350,7 @@ export async function loadLessonForPlan(plan, { performance = null, onStatus } =
   };
 }
 
-/** DÃ¡ id Ã s questÃµes (o LessonPage usa question.id como chave das respostas). */
+/** DÃƒÂ¡ id ÃƒÂ s questÃƒÂµes (o LessonPage usa question.id como chave das respostas). */
 function withQuestionIds(quiz) {
   if (!quiz) return null;
   const questions = (quiz.questions ?? []).map((question, index) => ({
@@ -389,19 +428,6 @@ export async function regenerateLessonForPlan(plan, { performance = null, onStat
  * no evento done/error em vez de esperar o fim do corpo. Sem isso a
  * interface ficaria travada em "Respondendo..." para sempre.
  */
-const DIAG_KEY = 'istudos_tutor_diag';
-
-function diag(etapa, detalhe) {
-  try {
-    const antes = JSON.parse(localStorage.getItem(DIAG_KEY) || '[]');
-    const linha = `${new Date().toISOString().slice(11, 19)} ${etapa}${detalhe ? ` ${detalhe}` : ''}`;
-    const depois = [...antes, linha].slice(-40);
-    localStorage.setItem(DIAG_KEY, JSON.stringify(depois));
-    console.log('[tutor-diag]', linha);
-  } catch {
-    // diagnostico nunca pode quebrar o chat
-  }
-}
 
 export function diagTutor(etapa) {
   diag(etapa);
