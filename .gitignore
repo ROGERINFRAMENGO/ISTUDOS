@@ -14,3 +14,7 @@ scripts/.tutor-erro.txt
 
 # Captura temporaria de SSE usada no diagnostico do Tutor
 tools/.sse-capturado.txt
+
+# Saida temporaria dos scripts de diagnostico (nao versionar)
+.tmp-*
+tools/.stream-injetado.mjs

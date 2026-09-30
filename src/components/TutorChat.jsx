@@ -203,6 +203,19 @@ export default function TutorChat({
     setDiagLinhas(lerDiagTutor());
   }, []);
 
+  // O painel precisa se atualizar SOZINHO. Os logs de dentro do ai.js
+  // (sessao:*, fetch:resposta, reader:ok, evento:*, timeout:*) sao
+  // gravados no localStorage pela funcao diag() e NAO passam por aqui:
+  // so um refresh manual os mostrava. Era por isso que o painel ficava
+  // congelado em "0.envio" e nao dizia onde a resposta tinha parado -
+  // o log completo estava no localStorage, so nao era desenhado.
+  useEffect(() => {
+    if (!diagAberto) return undefined;
+    setDiagLinhas(lerDiagTutor());
+    const intervalo = setInterval(() => setDiagLinhas(lerDiagTutor()), 600);
+    return () => clearInterval(intervalo);
+  }, [diagAberto]);
+
   // Reflete o status na tela: e o primeiro sinal de que travou.
   useEffect(() => {
     if (isThinking) {
