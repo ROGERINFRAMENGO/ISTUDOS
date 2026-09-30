@@ -171,17 +171,29 @@ export function createDb({ url, anonKey, token }) {
 
       // Duas abas podem chegar juntas: o unique index segura, entao
       // tentamos inserir e, se falhar, releemos a que ficou.
+      //
+      // CUIDADO com o Prefer: "ignore-duplicates" faz o PostgREST
+      // devolver 201 com corpo VAZIO quando a linha ja existe. Por isso
+      // o insert usa "return=representation" SEM ignore-duplicates: se
+      // duplicar, o proprio banco responde 409 e a gente releem a linha
+      // que ficou - que e exatamente o que o teste de contexto exige.
       for (let attempt = 1; attempt <= 2; attempt += 1) {
-        const criadas = await request(TUTOR_CONVERSATIONS_TABLE, {
-          method: "POST", prefer: "resolution=ignore-duplicates,return=representation",
-          body: {
-            user_id: userId,
-            title: String(title || topic || subject || "Conversa com a Tutora").slice(0, 90),
-            subject: subject || null,
-            topic: topic || null,
-            lesson_id: lessonId ?? null,
-          },
-        });
+        let criadas = null;
+        try {
+          criadas = await request(TUTOR_CONVERSATIONS_TABLE, {
+            method: "POST", prefer: "return=representation",
+            body: {
+              user_id: userId,
+              title: String(title || topic || subject || "Conversa com a Tutora").slice(0, 90),
+              subject: subject || null,
+              topic: topic || null,
+              lesson_id: lessonId ?? null,
+            },
+          });
+        } catch (error) {
+          // 409 = ja existia (indice unico). Nao e falha: seguimos.
+          if (error?.status !== 409) throw error;
+        }
         if (criadas?.[0]) return criadas[0];
         const again = (await select(TUTOR_CONVERSATIONS_TABLE, "id,title,subject,topic", filtros))?.[0];
         if (again) return again;

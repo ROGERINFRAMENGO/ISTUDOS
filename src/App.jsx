@@ -49,6 +49,7 @@ import {
   loadQuizForLesson,
   mergeSharedCache,
 } from './services/ai';
+import { prewarmProximasAulas } from './services/prewarm';
 import SchedulePage, { SettingsPage } from './components/SchedulePage';
 import LessonPage from './components/LessonPage';
 import AiChatPage from './components/AiChatPage';
@@ -541,6 +542,10 @@ function App() {
   const [aiLesson, setAiLesson] = useState(null); // { lesson, lessonId, model }
   const [aiQuiz, setAiQuiz] = useState(null);
   const [aiStatus, setAiStatus] = useState('');
+  // true enquanto o questionario e gerado a pedido do botao. Separa
+  // "preparando quiz" de "gerando aula" para o botao poder mostrar
+  // "Preparando questionario..." e travar so essa acao.
+  const [isPreparingQuiz, setIsPreparingQuiz] = useState(false);
   const [aiError, setAiError] = useState('');
   const [aiNonce, setAiNonce] = useState(0);
   const openPlan = selectedStudyLesson?.plan ?? null;
@@ -688,6 +693,23 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeUser?.id]);
 
+  // ---- Pre-geracao das aulas ----
+  // A aluna nao deve esperar a IA ao clicar. Assim que o app abre,
+  // ja pedimos em segundo plano as proximas aulas que faltam.
+  // Nao bloqueia nada: e um fetch solto, sem await na renderizacao, e o
+  // proprio servico se limita (2 por ciclo, cooldown, sem duplicar).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      prewarmProximasAulas();
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [activeUser?.id]);
+
+  // Depois de concluir uma aula ou um quiz, ja prepara a seguinte.
+  useEffect(() => {
+    if (quizResults) prewarmProximasAulas();
+  }, [quizResults]);
+
   const [lessonStartedAt, setLessonStartedAt] = useState(null);
 
   useEffect(() => {
@@ -721,9 +743,14 @@ function App() {
     return generatedStudyLesson ? getLessonQuiz(generatedStudyLesson) : [];
   }, [generatedStudyLesson, aiQuiz]);
   const lessonDetail = generatedStudyLesson ? getLessonDetail(generatedStudyLesson) : null;
-  const canShowQuiz =
-    lessonSeconds >= LESSON_MIN_SECONDS &&
-    (generatedStudyLesson?.generated ? Boolean(lessonQuiz.length || aiError) : true);
+  // A regra de liberacao e SO o timer: 10 segundos na aula.
+  //
+  // Antes exigia tambem o quiz pronto, e isso criava um deadlock:
+  //   quiz inexistente -> botao desabilitado -> aluna nao clica
+  //   -> quiz nunca e gerado -> botao continua desabilitado.
+  // O proprio handleGoToQuiz() sabe gerar o quiz ao clicar, entao
+  // exigir o quiz aqui era o que prendia a aluna na aula.
+  const canShowQuiz = lessonSeconds >= LESSON_MIN_SECONDS;
 
   const levelProgress = useMemo(() => {
     const currentLevelXp = 1000;
@@ -948,25 +975,32 @@ function App() {
     }
     setQuizError('');
 
-    // Aula da IA sem quiz na tela ainda: gera agora (a aula ja esta salva no banco).
-    if (generatedStudyLesson?.generated && !lessonQuiz.length) {
-      setAiStatus(AI_MESSAGES.generatingQuiz);
-      try {
-        const result = await loadQuizForLesson(openPlan, generatedStudyLesson.lessonId, {
-          lesson: aiLesson?.lesson ?? null,
-        });
-        setAiQuiz(result.quiz);
-        setAiStatus('');
-      } catch (error) {
-        setAiStatus('');
-        setQuizError(error?.message || AI_MESSAGES.offline);
-        return;
-      }
+  // Quiz ainda NAO pronto: a aluna clicou, geramos agora e abrimos.
+  // O botao nunca dependeu do quiz existir, entao este caminho sempre
+  // acaba em quiz aberto ou em erro com "Tentar novamente".
+  if (generatedStudyLesson?.generated && !lessonQuiz.length) {
+    setIsPreparingQuiz(true);
+    setQuizError('');
+    setAiStatus('Preparando questionario...');
+    try {
+      const result = await loadQuizForLesson(openPlan, generatedStudyLesson.lessonId, {
+        lesson: aiLesson?.lesson ?? null,
+      });
+      setAiQuiz(result.quiz);
+      setAiStatus('');
+      setIsPreparingQuiz(false);
+    } catch (error) {
+      setAiStatus('');
+      setIsPreparingQuiz(false);
+      // Nao prende a aluna: mostra o erro e o botao vira "Tentar novamente".
+      setQuizError(error?.message || AI_MESSAGES.offline);
+      return;
     }
+  }
 
-    setLessonFlow('quiz');
-    setLessonView('quiz');
-  };
+  setLessonFlow('quiz');
+  setLessonView('quiz');
+};
 
   const handleQuizSubmit = () => {
     if (!lessonQuiz.length) return;
@@ -1065,6 +1099,8 @@ function App() {
         onRetryLesson={() => setAiNonce((n) => n + 1)}
         lessonSeconds={lessonSeconds}
         canShowQuiz={canShowQuiz}
+        isPreparingQuiz={isPreparingQuiz}
+        quizReady={Boolean(lessonQuiz.length)}
         isSavingLesson={isSavingLesson}
         onBack={handleBackToHome}
         onGoToQuiz={handleGoToQuiz}

@@ -105,6 +105,53 @@ export default function LessonPage(props) {
   );
 }
 
+/**
+ * Botao de advancing para o questionario.
+ *
+ * A unica regra de liberacao e o TEMPO na aula (LESSON_MIN_SECONDS).
+ * O quiz NUNCA e requisito para habilitar: quando ainda nao existe, o
+ * proprio handleGoToQuiz() o gera no clique. Exigir o quiz aqui era o
+ * que travava a aluna (botao desabilitado -> nada gerava -> botao
+ * continuava desabilitado).
+ *
+ * Estados do rotulo:
+ *   < 10s .............. "Continue estudando..."
+ *   >= 10s, quiz pronto  "Continuar para o questionario"
+ *   >= 10s, quiz ausente "Preparar questionario"
+ *   gerando ............. "Preparando questionario..."
+ *   falhou .............. "Tentar novamente"
+ */
+function GoToQuizButton({ canShowQuiz, isPreparingQuiz, quizReady, quizError, quizCount = 5, onGoToQuiz }) {
+  if (isPreparingQuiz) {
+    return (
+      <button className="primary-button" type="button" disabled>
+        Preparando questionario...
+      </button>
+    );
+  }
+  if (quizError && canShowQuiz) {
+    return (
+      <button className="primary-button" type="button" onClick={onGoToQuiz}>
+        Tentar novamente
+      </button>
+    );
+  }
+  if (!canShowQuiz) {
+    return (
+      <button className="primary-button" type="button" disabled>
+        Continue estudando...
+      </button>
+    );
+  }
+  return (
+    <button className="primary-button" type="button" onClick={onGoToQuiz}>
+      {quizReady
+        ? `Continuar para o questionario (${quizCount} questoes)`
+        : 'Preparar questionario'}
+    </button>
+  );
+}
+
 function StudyContent(props) {
   const { lesson, detail } = props;
   // Aula do cronograma gerada pela IA tem layout proprio (sem video obrigatorio).
@@ -186,9 +233,7 @@ function StudyContent(props) {
         <h3>Terminei de estudar, ir para o questionario</h3>
         <p>Quando terminar de ler tudo e assistir ao video, clique abaixo para responder as 5 questoes.</p>
         <div className="hero-actions">
-          <button className="primary-button" onClick={props.onGoToQuiz} disabled={!props.canShowQuiz}>
-            Continuar para o questionario (5 questoes)
-          </button>
+          <GoToQuizButton {...props} quizCount={5} />
         </div>
       </section>
     </>
@@ -378,9 +423,7 @@ function GeneratedStudy(props) {
           {!props.quiz?.length ? ' (a IA prepara na hora)' : ''}.
         </p>
         <div className="hero-actions">
-          <button className="primary-button" onClick={props.onGoToQuiz} disabled={!props.canShowQuiz}>
-            Continuar para o questionario ({quizCount} questoes)
-          </button>
+          <GoToQuizButton {...props} quizCount={quizCount} />
         </div>
       </section>
     </>

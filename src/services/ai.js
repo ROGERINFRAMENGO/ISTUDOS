@@ -378,11 +378,6 @@ export async function regenerateLessonForPlan(plan, { performance = null, onStat
   return { lesson: result.lesson, lessonId: result.id ?? null };
 }
 
-/** Chat com a tutora (a funcao tutor monta o contexto do banco). */
-export async function callTutor({ messages, context }) {
-  return callFunction('tutor', { messages, context }, 90000);
-}
-
 /**
  * Chat da Tutora IA (Gemini) com STREAMING (FASE 2).
  *

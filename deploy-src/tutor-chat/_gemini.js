@@ -187,6 +187,7 @@ export async function streamText(apiKey, { model, system, contents, maxTokens, t
             completionTokens = json.usageMetadata.candidatesTokenCount ?? completionTokens;
           }
           onChunk?.(texto);
+          onChunk?.(texto);
         }
       }
     }

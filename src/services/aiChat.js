@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // Servico do Tutor IA - camada unica de conversa com a IA
 // ------------------------------------------------------------
 // FASE 2: o chat usa a Edge Function "tutor-chat", que fala com o
@@ -33,6 +33,14 @@ export const AI_RATE_LIMIT_MESSAGE =
  * @param {Function} opcoes.onDone       recebe { reply, model, conversationId }
  * @param {Function} opcoes.onError      recebe o erro
  */
-export async function askTutorStream({ messages = [], context = {}, conversationId, onDelta, onDone, onError }) {
-  return streamTutor({ messages, context, conversationId }, { onDelta, onDone, onError });
+export async function askTutorStream({
+  messages = [],
+  context = {},
+  conversationId,
+  onStart,
+  onDelta,
+  onDone,
+  onError,
+}) {
+  return streamTutor({ messages, context, conversationId }, { onStart, onDelta, onDone, onError });
 }
