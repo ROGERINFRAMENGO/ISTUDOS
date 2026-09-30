@@ -737,7 +737,9 @@ function App() {
 
   const getLessonQuiz = (lesson) => getFullLessonQuiz(lesson);
 
-  // Aula da IA: o quiz vem do generate-quiz. Aula cadastrada: quiz manual.
+  // Aula da IA e aula cadastrada: o quiz vem da mesma implementacao
+  // local (src/data/lessonQuiz.js). Antes as aulas da IA tentavam a Edge
+  // Function "generate-quiz", que nao existe e respondia 404.
   const lessonQuiz = useMemo(() => {
     if (generatedStudyLesson?.generated) return aiQuiz?.questions ?? [];
     return generatedStudyLesson ? getLessonQuiz(generatedStudyLesson) : [];

@@ -82,10 +82,12 @@ Toda a integração do front passa por [`src/services/ai.js`](src/services/ai.js
 npx supabase login
 npx supabase link --project-ref ehuwpvgcmssxrafsmtfo
 npx supabase functions deploy generate-lesson
-npx supabase functions deploy generate-quiz
-npx supabase functions deploy tutor
+npx supabase functions deploy tutor-chat
 npx supabase secrets set NVIDIA_API_KEY=nvapi-xxxxxxxx
+npx supabase secrets set GROQ_API_KEY=gsk_xxxxxxxx
 ```
+
+Estas são **as duas funções que o frontend usa**. Não existem `generate-quiz` nem `tutor`: o quiz é montado localmente por `src/data/lessonQuiz.js` e o chat fala só com `tutor-chat`. Um `deploy` delas não deve ser feito — e nenhuma chamada no bundle aponta para essas rotas (confira com `node tools/conferir-rotas-legadas.mjs`).
 
 E no **Dashboard** (não tem pela CLI): **Authentication → Sign In → Allow anonymous sign-ins = on**. Sem isso as funções devolvem `401` e o site mostra o aviso de "IA ainda não liberada" em vez de quebrar.
 

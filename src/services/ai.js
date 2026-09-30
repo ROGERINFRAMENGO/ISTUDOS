@@ -16,6 +16,7 @@
 // ============================================================
 
 import { supabase, aiSupabase, SUPABASE_URL, SUPABASE_ANON_KEY, isSupabaseConfigured } from '../lib/supabase';
+import { getFullLessonQuiz } from '../data/lessonQuiz';
 
 const LOCAL_CACHE_KEY = 'istudos_ai_lessons';
 const MAX_LOCAL_ENTRIES = 40;
@@ -27,6 +28,19 @@ const DIAG_KEY = 'istudos_tutor_diag';
 // Limite para abrir a sessao anonima. Sem isso, uma rede lenta (ou a
 // cota de sessoes anonimas esgotada) trava a tela em 'Respondendo...'.
 const SESSION_TIMEOUT_MS = 12000;
+
+// Sem trafego por 50s o fetch e abortado (Bug 4): sem isso a UI
+// ficava em generating/streaming para sempre.
+const TUTOR_IDLE_TIMEOUT_MS = 50000;
+
+// Teto para a RESPOSTA comecar (fetch + cabecalho + corpo). E o
+// prazo maximo que o navegador espera pela Edge Function antes de
+// desistir: 30s e tolerante (o gpt-oss-20b leva alguns segundos
+// pensando antes do primeiro token) e nunca infinito. Vale para o
+// caminho em que o fetch fica pendurado (conexao SSE morta, proxy
+// engolindo a requisicao, DNS sem resposta), em que o timer de
+// inatividade ainda nem existe porque o reader nem foi criado.
+const TUTOR_STREAM_TIMEOUT_MS = 30000;
 
 function diag(etapa, detalhe) {
   try {
@@ -360,43 +374,51 @@ function withQuestionIds(quiz) {
   return { ...quiz, questions };
 }
 
-/** Quiz da aula ja salva (generate-quiz le o conteudo do banco). */
+/**
+ * Quiz da aula ja salva.
+ *
+ * LIMPEZA (30/09/2026): esta funcao chamava a Edge Function
+ * "generate-quiz", que NAO EXISTE no projeto - as unicas implantadas
+ * sao ai-tutor, generate-lesson, ai-bench e tutor-chat. Toda abertura
+ * de quiz de uma aula da IA respondia 404 e a aluna caia no botao
+ * "Tentar novamente" para sempre (a tabela generated_quizzes esta
+ * vazia: nenhum quiz de IA chegou a ser gravado).
+ *
+ * O que substitui a chamada morta e a implementacao que ja existia no
+ * projeto e continua em uso pelas aulas cadastradas:
+ * src/data/lessonQuiz.js -> getFullLessonQuiz(). Mesma assinatura de
+ * retorno ({ quiz, fromCache }), mesma cache, e ZERO requisicao de
+ * rede - nenhuma funcionalidade nova foi criada.
+ */
 export async function loadQuizForLesson(
   plan,
   lessonId,
   { difficulty = 'medium', performance = null, lesson = null, onStatus } = {},
 ) {
-  if (!lessonId && !lesson) {
+  const cached = getCachedLesson(plan);
+  if (cached?.quiz?.questions?.length) return { quiz: withQuestionIds(cached.quiz), fromCache: true };
+
+  // A aula pode nao ter vindo no parametro quando ela foi salva no
+  // banco; o cache local ainda a tem. O plano do cronograma e o ultimo
+  // recurso (ele ja carrega id/subject/topic/objective).
+  const base = lesson ?? cached?.lesson ?? null;
+  if (!base) {
     const error = new Error('A aula ainda nao foi salva para gerar o quiz.');
     error.code = 'missing_lesson';
     throw error;
   }
-  const cached = getCachedLesson(plan);
-  if (cached?.quiz?.questions?.length) return { quiz: withQuestionIds(cached.quiz), fromCache: true };
 
   onStatus?.(AI_MESSAGES.generatingQuiz);
-  const result = await callFunction(
-    'generate-quiz',
-    {
-      lessonId: lessonId ?? null,
-      // Sem aula salva no banco (saveFailed), o conteudo vem daqui.
-      lesson: lessonId ? null : lesson,
-      subject: plan.subject,
-      topic: plan.topic,
-      difficulty,
-      questionCount: 5,
-      studentPerformance: performance ?? {},
-    },
-    QUIZ_TIMEOUT_MS,
-  );
-  if (!result?.quiz?.questions?.length) {
+  const questions = getFullLessonQuiz(base);
+  if (!questions.length) {
     const error = new Error(AI_MESSAGES.offline);
     error.code = 'invalid_quiz';
     throw error;
   }
-  const quiz = withQuestionIds(result.quiz);
-  saveCachedLesson(plan, { quiz, quizId: result.id ?? null });
-  return { quiz, fromCache: Boolean(result.cached) };
+
+  const quiz = withQuestionIds({ questions });
+  saveCachedLesson(plan, { quiz, quizId: null });
+  return { quiz, fromCache: false };
 }
 
 /** Forca uma nova versao da aula (botao "Gerar de novo"). */
@@ -449,6 +471,7 @@ export function limparDiagTutor() {
   }
 }
 
+
 export async function streamTutor({ messages, context, conversationId }, handlers = {}) {
   const { onDelta, onDone, onError, onStart } = handlers;
   const token = await ensureAiSession();
@@ -461,6 +484,67 @@ export async function streamTutor({ messages, context, conversationId }, handler
 
   const controller = new AbortController();
   let reader = null;
+  let finalizou = false;
+  let timerOcioso = null;
+
+  // Garante onDone OU onError exatamente uma vez.
+  const concluirDone = (dados) => {
+    if (finalizou) return;
+    finalizou = true;
+    onDone?.(dados);
+  };
+  const concluirErro = (erro) => {
+    if (finalizou) return;
+    finalizou = true;
+    onError?.(erro);
+  };
+  const desarmarOcioso = () => {
+    if (timerOcioso) {
+      clearTimeout(timerOcioso);
+      timerOcioso = null;
+    }
+  };
+  // Timeout de inatividade: reiniciado a cada chunk recebido.
+  const armarOcioso = () => {
+    desarmarOcioso();
+    timerOcioso = setTimeout(() => {
+      diag('timeout:ocioso', `limite=${TUTOR_IDLE_TIMEOUT_MS}`);
+      try {
+        controller.abort();
+      } catch {
+        // ignore
+      }
+      const error = new Error(AI_MESSAGES.offline);
+      error.code = 'timeout';
+      error.status = 408;
+      concluirErro(error);
+    }, TUTOR_IDLE_TIMEOUT_MS);
+  };
+
+  // Prazo maximo para a resposta COMECAR. Fica armado desde o
+  // primeiro instante (antes do fetch) e e o unico que cobre o
+  // caminho em que nada volta: conexao SSE pendurada, proxy ou DNS
+  // engolindo a requisicao. Sem ele, esse fetch ficava esperando para
+  // sempre, nenhum handler era chamado e o chat ficava em
+  // "Respondendo..." sem nunca destravar.
+  //
+  // Ele e desarmado no primeiro evento do stream (abaixo) e nao no
+  // `done`: uma resposta longa e legitima pode passar de 30s
+  // escrevendo, e o que segura esse caso e o timer de inatividade,
+  // que se rearma a cada pedaco. Se ficasse armado ate o fim, ele
+  // cortaria no meio uma conversa que estava indo bem.
+  const desarmarStream = () => {
+    clearTimeout(streamTimer);
+  };
+  const streamTimer = setTimeout(() => {
+    diag('timeout:stream', `limite=${TUTOR_STREAM_TIMEOUT_MS}`);
+    try {
+      controller.abort();
+    } catch {
+      // ignore
+    }
+  }, TUTOR_STREAM_TIMEOUT_MS);
+
   try {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/tutor-chat`, {
       method: 'POST',
@@ -474,28 +558,30 @@ export async function streamTutor({ messages, context, conversationId }, handler
     });
     diag('fetch:resposta', `http=${response.status} ct=${response.headers.get('content-type')} body=${Boolean(response.body)}`);
 
-    // Erro antes de comecar o stream: o corpo ainda e JSON comum.
-    // CORRECAO (30/09/2026): antes so tratava erro quando o Content-Type
-    // era application/json. Um 401/429/5xx com corpo vazio ou text/plain
-    // caia no parser SSE, nenhum onDone/onError era chamado e a tela
-    // ficava em "Respondendo..." para sempre.
+    // Erro antes de comecar o stream: vale para JSON, texto ou HTML.
+    // Le o corpo como texto e tenta JSON.parse, para nenhum HTTP falho
+    // cair no parser SSE sem chamar onError.
     if (!response.ok) {
-      const contentType = response.headers.get('content-type') || '';
-      const payload = contentType.includes('application/json')
-        ? await response.json().catch(() => null)
-        : null;
+      const texto = await response.text().catch(() => '');
+      let payload = null;
+      try {
+        payload = texto ? JSON.parse(texto) : null;
+      } catch {
+        payload = null;
+      }
       const error = new Error(payload?.message || AI_MESSAGES.offline);
       error.status = response.status;
       error.code = response.status === 429 ? 'rate_limited' : (payload?.error ?? 'http_error');
       error.retryAfterMs = payload?.retryAfterMs ?? null;
+      error.detail = payload?.detail ?? (texto ? texto.slice(0, 300) : null);
       diag('fetch:erro-http', `http=${response.status} code=${error.code}`);
-      onError?.(error);
+      concluirErro(error);
       return;
     }
 
     if (!response.body) {
       diag('erro', 'sem response.body');
-      onError?.(new Error('Este navegador nao suporta leitura em streaming.'));
+      concluirErro(new Error('Este navegador nao suporta leitura em streaming.'));
       return;
     }
 
@@ -529,6 +615,10 @@ export async function streamTutor({ messages, context, conversationId }, handler
           continue;
         }
         if (!evento) continue;
+        // Chegou dado de verdade: a resposta comecou. O prazo de 30s
+        // cumpriu o papel (destravou o caminho do fetch pendurado) e
+        // agora quem protege a conversa e o timer de inatividade.
+        desarmarStream();
         if (evento === 'start') {
           diag('evento:start');
           onStart?.(dados);
@@ -542,18 +632,19 @@ export async function streamTutor({ messages, context, conversationId }, handler
         } else if (evento === 'done') {
           encerrou = true;
           diag('evento:done', `reply=${dados?.reply?.length ?? 0} model=${dados?.model ?? '-'}`);
-          onDone?.(dados);
+          concluirDone(dados);
         } else if (evento === 'error') {
           const error = new Error(dados.message || AI_MESSAGES.offline);
           error.code = dados.error ?? 'tutor_error';
           error.status = 502;
           encerrou = true;
           diag('evento:error', `${error.code} ${String(dados.message ?? '').slice(0, 90)}`);
-          onError?.(error);
+          concluirErro(error);
         }
       }
     };
 
+    armarOcioso();
     while (!encerrou) {
       const { done, value } = await reader.read();
       leituras += 1;
@@ -562,6 +653,7 @@ export async function streamTutor({ messages, context, conversationId }, handler
         break;
       }
       buffer += decoder.decode(value, { stream: true });
+      armarOcioso();
       const blocos = buffer.split('\n\n');
       buffer = blocos.pop() ?? '';
 
@@ -571,32 +663,47 @@ export async function streamTutor({ messages, context, conversationId }, handler
       }
     }
 
-    // CORRECAO (30/09/2026): o ultimo evento pode chegar junto com o
-    // fechamento do stream, sem o "\n\n" final - ele ficava preso no
-    // buffer e o onDone nunca era chamado (tela em "Respondendo...").
+    // O ultimo evento pode chegar junto com o fechamento do stream,
+    // sem o "\n\n" final - ele ficava preso no buffer.
     if (!encerrou && buffer.trim()) {
       diag('buffer:restante', `len=${buffer.length}`);
       processarBloco(buffer);
       buffer = '';
     }
 
-    // CORRECAO (30/09/2026): o stream fechou sem done/error (rede cortou,
-    // gateway matou a conexao). Antes nenhum handler era chamado e a tela
-    // travava em "Respondendo...". Se ja chegou texto parcial, entregamos
-    // como resposta final; senao, erro para a UI mostrar "tentar de novo".
-    if (!encerrou) {
+    // O stream fechou sem done/error (rede cortou, gateway matou a
+    // conexao). Se ja chegou texto parcial, entregamos como resposta
+    // final; senao, erro para a UI mostrar "tentar de novo".
+    if (!encerrou && !finalizou) {
       diag('stream:fechou-sem-done', `acumulado=${acumulado.length}`);
       if (acumulado.trim()) {
-        onDone?.({ reply: acumulado, model: null, conversationId, parcial: true });
+        concluirDone({ reply: acumulado, model: null, conversationId, parcial: true });
       } else {
-        onError?.(new Error(AI_MESSAGES.offline));
+        concluirErro(new Error(AI_MESSAGES.offline));
       }
     }
   } catch (error) {
     diag('catch', `${error?.name ?? 'Error'}: ${String(error?.message ?? error).slice(0, 120)}`);
-    if (error?.name === 'AbortError') return;
-    onError?.(error);
+    // O AbortError NAO e mais engolido com `return`. Ele e a unica prova
+    // de que o fetch foi interrompido por um dos dois timers, e e
+    // exatamente aqui que a tela se destrava: sem onError, o TutorChat
+    // ficava em "Respondendo..." para sempre. `finalizou` mantem a
+    // garantia de onDone OU onError, nunca os dois.
+    if (error?.name === 'AbortError') {
+      if (finalizou) return;
+      const timeout = new Error(AI_MESSAGES.offline);
+      timeout.code = 'timeout';
+      timeout.status = 408;
+      concluirErro(timeout);
+      return;
+    }
+    concluirErro(error);
   } finally {
+    desarmarOcioso();
+    // Antes de abortar/cancelar: um timer de 30s que sobra vivo
+    // dispararia no meio da PROXIMA resposta e cortaria a conversa
+    // seguinte por um motivo que nao existe.
+    clearTimeout(streamTimer);
     controller.abort();
     try {
       await reader?.cancel();
