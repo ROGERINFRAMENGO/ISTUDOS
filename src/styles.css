@@ -1772,3 +1772,9 @@ h1, h2, h3, h4, p {
 }
 .chat-diag-acoes { display: flex; gap: 6px; }
 .chat-diag-dica { margin: 8px 0 0; opacity: 0.75; font-size: 11px; }
+
+.chat-diag-estado {
+  margin: 0 0 8px; padding: 8px; max-height: 150px; overflow: auto;
+  background: #0b3d2e; border-radius: 8px; white-space: pre-wrap;
+  word-break: break-all; font-size: 11px; line-height: 1.5; color: #a7f3d0;
+}

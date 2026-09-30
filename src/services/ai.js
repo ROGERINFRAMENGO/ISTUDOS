@@ -32,7 +32,7 @@ function diag(etapa, detalhe) {
   try {
     const antes = JSON.parse(localStorage.getItem(DIAG_KEY) || '[]');
     const linha = `${new Date().toISOString().slice(11, 19)} ${etapa}${detalhe ? ` ${detalhe}` : ''}`;
-    const depois = [...antes, linha].slice(-40);
+    const depois = [...antes, linha].slice(-200);
     localStorage.setItem(DIAG_KEY, JSON.stringify(depois));
     console.log('[tutor-diag]', linha);
   } catch {

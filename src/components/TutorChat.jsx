@@ -440,9 +440,16 @@ export default function TutorChat({
             Mensagens no estado: <strong>{messages.length}</strong> Â· status: <strong>{status}</strong>
             {conversationId ? ' Â· conversa ok' : ' Â· SEM conversa'}
           </p>
-          <pre className="chat-diag-log">
-            {diagLinhas.length ? diagLinhas.join('\n') : '(sem registros ainda)'}
+          <pre className="chat-diag-estado">
+            {messages
+              .slice(-4)
+              .map(
+                (m, i) =>
+                  `[${messages.length - 4 + i}] ${m.role} streaming=${m.streaming === true} chars=${String(m.content || '').length} :: ${String(m.content || '').slice(0, 60)}`,
+              )
+              .join('\n') || '(sem mensagens)'}
           </pre>
+
           <div className="chat-diag-acoes">
             <button
               type="button"
