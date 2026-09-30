@@ -25,9 +25,33 @@ const TUTOR_MESSAGES_TABLE = "tutor_messages";
  * O BLOCO entra na chave porque cada dia do cronograma tem dois blocos
  * (55min + 55min) e eles sao aulas diferentes.
  */
+/**
+ * Versao do CONTEUDO gerado pela IA. Entra na chave do cache junto com
+ * a versao do curriculo.
+ *
+ * Prioridade 1 (30/09/2026): o prompt da aula e o validateLesson()
+ * mudaram (proibicao de metadado do cronograma, defesa de coerencia,
+ * profundidade maior). As 25 aulas ja gravadas foram feitas com o
+ * prompt antigo e contem erros conhecidos. Bump nesta constante faz
+ * TODAS elas serem tratadas como cache miss e regeradas, sem apagar
+ * nada: progresso, conclusao, respostas, XP e historico ficam intactos,
+ * porque nao vivem em generated_lessons.
+ *
+ * O CLIENTE (src/services/ai.js) tem a MESMA constante. Se as duas
+ * divergirem, o app pede uma aula com a chave antiga, a Edge Function
+ * responde com a chave nova e o cache local fica inutil.
+ */
+export const LESSON_CONTENT_VERSION = "p1-aulas-2026-09-30";
+
+/**
+ * Chave logica da aula: abrir a mesma aula de novo nunca gera outra.
+ * O BLOCO entra na chave porque cada dia do cronograma tem dois blocos
+ * (55min + 55min) e eles sao aulas diferentes.
+ */
 export function lessonCacheKey({ curriculumVersion = "v1", week, day, dateKey, block, subject, topic }) {
   return [
     String(curriculumVersion || "v1"),
+    LESSON_CONTENT_VERSION,
     String(week ?? "?"),
     String(dateKey ?? day ?? "?"),
     `b${Number(block) || 1}`,

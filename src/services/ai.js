@@ -233,9 +233,26 @@ function writeLocalCache(cache) {
   }
 }
 
+/**
+ * Versao do CONTEUDO gerado pela IA (Prioridade 1, 30/09/2026).
+ *
+ * O prompt da aula e o validateLesson() mudaram: agora a aula nao pode
+ * citar o cronograma, tem defesa de coerencia e exige mais
+ * profundidade. As 25 aulas ja gravadas usam o prompt antigo e contem
+ * erros conhecidos. Bump aqui (e na MESMA constante em
+ * supabase/functions/_shared/db.js) faz a chave do cache mudar, e a
+ * aula antiga deixa de ser servida sem precisar apagar nada.
+ *
+ * IMPORTANTE: isto invalida apenas o CONTEUDO gerado. Progresso,
+ * conclusao de aula, respostas, XP, historico e dados do Tutor nao
+ * usam esta chave e ficam intactos.
+ */
+export const LESSON_CONTENT_VERSION = 'p1-aulas-2026-09-30';
+
 export function lessonCacheKey(plan) {
   return [
     plan.curriculumVersion || 'v1',
+    LESSON_CONTENT_VERSION,
     plan.week ?? '?',
     plan.dateKey ?? plan.day ?? '?',
     // O bloco entra na chave: no mesmo dia sao duas aulas diferentes.

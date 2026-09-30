@@ -33,19 +33,54 @@ export function subjectRules(subject) {
     .normalize("NFD")
     .replace(/[^a-z]/g, "");
   if (s.includes("matem")) {
-    return "- Matematica: mostre TODOS os calculos passo a passo, linha por linha, explicando o raciocinio de cada etapa (por que somar, por que dividir, por que simplificar). Nunca entregue so o resultado. Confira se o numero escrito bate com a conta feita.";
+    return [
+      "COMO ENSINAR MATEMATICA:",
+      "- Mostre TODOS os calculos linha por linha e diga POR QUE cada operacao e feita. Nunca entregue so o resultado.",
+      "- Confira o calculo de ponta a ponta: o numero final tem que bater com a conta.",
+      "- Com mais de uma operacao, respeite a ordem das operacoes e diga por que ela existe.",
+      "- Para cada regra, diga o que ela FAZ e mostre um caso onde ela NAO se aplica.",
+      "- Erro em matematica quase sempre e conta invertida, sinal trocado ou ordem ignorada: aponte o ponto exato.",
+    ].join("\n");
   }
   if (s.includes("portug")) {
-    return "- Portugues: use textos curtos quando forem necessarios e separe compreensao (o que o texto diz) de interpretacao (o que se conclui dele). Ao apontar a alternativa correta, explique por que ela esta certa e por que cada uma das outras esta errada.";
-  }
-  if (s.includes("hist") || s.includes("geograf")) {
-    return "- Historia/Geografia: priorize contexto, causa, consequencia e interpretacao. Nunca faca lista solta de datas ou nomes: explique o que causou o que e o que mudou na vida das pessoas. Se o bloco juntou as duas materias, explique primeiro a ideia de cada uma e depois como elas se conectam no mesmo periodo.";
-  }
-  if (s.includes("ingles")) {
-    return "- Ingles: escreva o trecho em ingles e a explicacao em portugues. Ensine o vocabulario pelo contexto da frase, nunca a palavra solta. Mostre sempre a traducao da frase inteira e explique por que a alternativa correta e a que combina com o sentido do texto.";
+    return [
+      "COMO ENSINAR PORTUGUES:",
+      "- Use um texto curto e real como materia-prima. Boa parte da secao deve ser analise desse texto.",
+      "- Separe sempre compreensao (o que o texto DIZ) de interpretacao (o que se CONCLUI dele).",
+      "- Aponte a PALAVRA do texto que sustenta cada resposta: a aluna precisa ver a pista, nao adivinhar.",
+      "- Explique por que a alternativa errada esta errada, nao apenas por que a certa esta certa.",
+      "- Trabalhe vocabulario no contexto da frase, nunca a palavra solta.",
+    ].join("\n");
   }
   if (s.includes("fisic") || s.includes("quimic") || s.includes("biolog") || s.includes("cienc")) {
-    return "- Ciencias: explique primeiro o conceito (o que e e por que acontece) e so depois a aplicacao em situacoes praticas e de prova.";
+    return [
+      "COMO ENSINAR CIENCIAS:",
+      "- Comece pelo CONCEITO (o que e) e so depois pelo MECANISMO (por que acontece assim).",
+      "- Explique CAUSA e CONSEQUENCIA: o que provocou, o que resultou, o que mudaria se algo fosse diferente.",
+      "- Use exemplos do COTIDIANO (cozinha, corpo, rua, clima) antes de exemplos abstratos.",
+      "- COMPARE quando ajudar: o contraste entre dois casos torna a propriedade evidente.",
+      "- CONFIRME ANTES DE ESCREVER: formula, unidade e classificacao. Se o enunciado que voce inventou",
+      "  tem premissa falsa, corrija o enunciado. Exemplo do erro a evitar: dizer que o gas carbonico e",
+      "  formado de nitrogenio. Ele e formado de carbono e oxigenio, portanto e uma substancia COMPOSTA.",
+      "  Prefira sempre um exemplo cujo enunciado seja verdadeiro; se precisar corrigir algo, corrija o enunciado.",
+    ].join("\n");
+  }
+  if (s.includes("hist") || s.includes("geograf")) {
+    return [
+      "COMO ENSINAR HISTORIA E GEOGRAFIA:",
+      "- Comece pelo CONTEXTO: onde, quando, para quem e por que aquele fato aconteceu.",
+      "- Explique a RELACAO entre causa e consequencia. Fechar com 'aconteceu' e so 'lista de datas'.",
+      "- Mostre por que a mudanca alterou a vida das pessoas, nao apenas que aconteceu.",
+      "- Se o bloco juntou Historia e Geografia, explique a ideia de cada uma e depois como se conectam no periodo.",
+    ].join("\n");
+  }
+  if (s.includes("ingles")) {
+    return [
+      "COMO ENSINAR INGLES:",
+      "- Escreva o trecho em ingles e explique em portugues.",
+      "- Ensine o vocabulario pelo contexto da frase, nunca a palavra solta.",
+      "- Mostre sempre a traducao da frase inteira e explique por que a alternativa combina com o sentido.",
+    ].join("\n");
   }
   return "- Comece do nivel basico e aumente a dificuldade aos poucos, sem salto de nivel.";
 }
@@ -81,14 +116,52 @@ export function buildLessonPrompt(input) {
   const system = [
     BASE_RULES,
     "",
-    "VOCE E: uma professora particular que escreve aulas completas e autossuficientes.",
+    "VOCE E: uma professora particular que escreve aulas completas, honestas e autossuficientes.",
     "FORMATO: devolva SOMENTE um objeto JSON valido, sem markdown e sem cercas de codigo, exatamente neste formato:",
     LESSON_JSON_SHAPE,
     "",
-    'QUANTIDADES OBRIGATORIAS: "objectives" com 3 itens; "sections" com exatamente 3 secoes; cada secao com 1 exemplo resolvido; "guidedPractice" com 3 exercicios; "commonMistakes" com 3 itens; "summary" com 4 itens.',
-    'TAMANHOS: title ate 90 caracteres; introduction entre 200 e 500 caracteres; explanation de cada secao entre 500 e 1200 caracteres.',
-    "PROGRESSAO obrigatoria: ideia nova -> exemplo resolvido -> exercicio um pouco mais dificil. Nenhum salto desnecessario de dificuldade.",
-    'Use quebra de linha (\\n) dentro dos textos para separar as etapas da conta.',
+    'QUANTIDADES: "objectives" com 3 a 4 itens; "sections" com 3 a 5 secoes; cada secao com 1 ou 2 exemplos resolvidos; "guidedPractice" com 3 a 5 exercicios; "commonMistakes" com 3 a 5 itens; "summary" com 4 a 6 itens.',
+    "TAMANHOS: title ate 90 caracteres; introduction entre 250 e 600 caracteres; explanation de cada secao entre 600 e 1400 caracteres.",
+    "",
+    "REGRA 1 - NAO VAZAR O CRONOGRAMA:",
+    "A aluna NUNCA pode ler na aula: semana, dia, bloco, fase, minutos, 'o que nao couber',",
+    "'revisao amanha', nem qualquer outra instrucao interna de agendamento. O cronograma serve",
+    "para voce saber o que ensinar e em quanto tempo caber. Nada disso aparece no texto que ela le.",
+    "A introduction comeca pelo ASSUNTO, do jeito que um professor apresentaria a aula.",
+    "",
+    "REGRA 2 - EXEMPLOS CORRETOS ANTES DE TUDO:",
+    "Antes de escrever qualquer exemplo, confera se o enunciado esta cientificamente correto.",
+    "Se voce escreveu um enunciado com premissa falsa (por exemplo dizer que o gas carbonico e",
+    "formado de nitrogenio), CORRIJA a premissa antes de responder. Nunca construa um exemplo",
+    "sobre um enunciado que voce mesmo sabe errado.",
+    "- Se a propriedade nao vale, ajuste o enunciado para um caso que valha.",
+    "- Se a resposta depende de um calculo, refaca o calculo e confira o resultado.",
+    "- Se o exemplo usa uma formula, a formula tem que ser a correta para aquele caso.",
+    "",
+    "REGRA 3 - COERENCIA INTERNA (OBRIGATORIA):",
+    "problema, solucao, answer e explicacao tem que falar da MESMA coisa e concordar entre si.",
+    "Se a solucao diz uma coisa e a explicacao diz outra, ha erro: reescreva ate bater.",
+    "Nunca escreva uma explicacao que justifique uma resposta diferente da que voce escreveu.",
+    "",
+    "REGRA 4 - PROFUNDIDADE UTIL (nao tamanho):",
+    "Prefiro menos secoes bem explicadas do que muitas secoes rasas. Nao encha linguiça.",
+    "Cada secao precisa ter: o que e, POR QUE funciona, um exemplo resolvido e onde isso aparece",
+    "na prova. Se um paragrafo nao acrescenta nada alem de repetir o titulo, corte.",
+    "",
+    "REGRA 5 - ETEC, COM HONESTIDADE:",
+    "Explique como o conceito costuma aparecer em questão, como reconhecer o comando da questão",
+    "e quais confusoes a aluna costuma cometer. NAO diga que um assunto 'vai cair' na prova:",
+    "voce nao tem essa informacao. Fale do que e comum, nao do que esta marcado.",
+    "",
+    "REGRA 6 - COMO RECONHECER O CONTEUDO NA QUESTAO:",
+    "Em pelo menos uma secao, explique como a aluna identifica que a questao esta cobrando",
+    "aquele conteudo: quais palavras do enunciado entregam a pista, e o que ela deve fazer",
+    "quando encontrar essa pista.",
+    "",
+    "REGRA 7 - FORMATO:",
+    "- Texto simples, sem markdown. Proibido ** , # , listas com - , e tabelas.",
+    "- Use \\n para separar etapas de conta, e 'primeiro', 'depois', 'por fim' para enumerar.",
+    "- Nenhum emoji, nenhum asterisco, nenhuma cercas de codigo.",
   ].join("\n");
 
   const user = [
@@ -98,18 +171,23 @@ export function buildLessonPrompt(input) {
     `Topico: ${input.topic}`,
     `Subtopicos que a aula DEVE cobrir, nesta ordem: ${subtopics}`,
     `Objetivos do cronograma: ${objectives}`,
-    `Duracao do BLOCO: ${duration} minutos`,
     `Nivel: ${input.studentLevel || "Ensino Fundamental II"}`,
-    `Posicao no cronograma: semana ${input.week}, dia ${input.day} (nao mude nada disso)`,
-    `Data: ${input.dateKey || "nao informada"}${input.weekday ? ` (${input.weekday})` : ""}`,
-    `Fase do cronograma: ${input.phaseLabel || input.phase || "nao informada"}`,
-    `Bloco: ${blockInfo}`,
+    // O cronograma controla a GERACAO, mas nao aparece no texto da aula:
+    // as regras abaixo proem o modelo de citar qualquer um destes dados.
+    `Uso interno (NUNCA cite na aula): ${duration} min, semana ${input.week}, dia ${input.day}, ${blockInfo}`,
     "",
     "REGRA DE TEMPO (obrigatoria):",
     `- A aula precisa CABER em ${duration} minutos de leitura e pratica.`,
-    `- Nao tente dar uma materia de 2 horas dentro de um bloco de ${duration} minutos.`,
-    "- Cubra TODOS os subtopicos listados, mas escolha o jeito de explicar que cabe no tempo: menos texto, mais exemplos curtos e etapas numeradas.",
-    `- Se houver materia demais para ${duration} minutos, ensine o essencial de cada subtopico e diga explicitamente o que fica para a revisao do dia seguinte.`,
+    "- Nao tente dar uma materia de 2 horas dentro de um bloco so.",
+    "- Cubra TODOS os subtopicos, escolhendo o jeito de explicar que cabe no tempo.",
+    "- Se houver materia demais, ensine o essencial de cada subtopico. NUNCA escreva que algo",
+    "  'fica para a revisao de amanha' ou 'nao coube hoje': a aluna so precisa da aula.",
+    "",
+    "PROIBIDO no texto que a aluna le (regra absoluta):",
+    "- 'semana N', 'dia N', 'bloco N', 'fase do cronograma', '55 minutos', '120 min'.",
+    "- 'hoje vamos trabalhar', 'o que nao couber', 'revisao amanha', 'a aula anterior'.",
+    "- Qualquer mencao a agenda, horario, blocos ou planejamento do cronograma.",
+    "A introduction comeca pelo TEMA, como um professor que abre a aula para a turma.",
     "",
     isReview
       ? "OBSERVACAO: este e um bloco de REVISAO. Recapitule o que ja foi visto, corrija os erros tipicos e reforce a base, sem apresentar assunto novo."

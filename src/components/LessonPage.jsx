@@ -321,7 +321,22 @@ function GeneratedStudy(props) {
           <span className="tag" style={{ background: `${lesson.color || '#a377ff'}1a`, color: lesson.color || '#a377ff' }}>
             Aula do cronograma · {lesson.duration} min · feita pela IA para voce
           </span>
-          <h3>{detail.introduction || lesson.topic}</h3>
+          {/*
+            A introduction e um PARAGRAFO (o gancho da aula), nao um
+            titulo. Antes ela entrava num <h3> e o bloco inteiro
+            aparecia em negrito gigante, como se fosse o nome da aula.
+            O titulo de verdade e o topico do cronograma, que ja esta no
+            cabecalho da tela; aqui a introducao entra como texto de
+            leitura, com o topico como apoio.
+          */}
+          {detail.introduction ? (
+            <>
+              <h3 className="lesson-intro-topic">{lesson.topic}</h3>
+              <p className="lesson-introduction">{detail.introduction}</p>
+            </>
+          ) : (
+            <h3>{lesson.topic}</h3>
+          )}
           {detail.objectives?.length ? (
             <>
               <h4>🎯 Ao final desta aula voce consegue</h4>

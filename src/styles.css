@@ -578,6 +578,26 @@ h1, h2, h3, h4, p {
   color: var(--muted);
 }
 
+/*
+  A introduction da aula gerada pela IA (Prioridade 1).
+  Antes ela era renderizada dentro de um <h3>, entao um paragrafo de
+  400 caracteres aparecia em negrito gigante. Agora o topico fica
+  como titulo curto e a introduction vira texto de leitura, com o
+  ritmo de linha e espacamento iguais ao resto da aula.
+*/
+.lesson-intro-topic {
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.lesson-introduction {
+  margin: 0;
+  line-height: 1.65;
+  font-size: 1.02rem;
+  color: var(--text);
+  opacity: 0.92;
+}
+
 .lesson-timer {
   font-weight: 700;
   color: var(--text);
