@@ -356,126 +356,155 @@ export default function TutorChat({
     }, 30000);
     let vigia = armarVigia();
     registrar('0.envio', 'abrindo sessao e chamando a Edge Function');
-    try {
-      await askTutorStream(
-        { messages: [...janela, { role: 'user', content: clean }], context, conversationId },
-        {
-          onStart: () => {
-            registrar('1.onStart', 'a tutora comecou');
-            setStatus('streaming');
-          },
-          onDelta: (_pedaco, acumulado) => {
-            recebeuAlgo = true;
-            textoAcumulado = acumulado;
-            // Rearma: a resposta esta chegando, o problema e so lentidao.
-            clearTimeout(vigia);
-            vigia = armarVigia();
-            // Loga no maximo ~1x por segundo (o primeiro pedaco sempre
-            // entra): o resto do trabalho por delta e so React.
-            const agora = Date.now();
-            if (ultimoLogDelta === 0 || agora - ultimoLogDelta > 1000) {
-              ultimoLogDelta = agora;
-              registrar('2.onDelta', `+${String(acumulado).length} chars`);
-            }
-            setStatus('streaming');
-            setStreamText(acumulado);
-            setMessages((prev) => {
-              const existe = prev.some((m) => m.id === idProvisoria);
-              if (existe) {
-                return prev.map((m) => (m.id === idProvisoria ? { ...m, content: acumulado, streaming: true } : m));
-              }
-              // 'streaming: true' e OBRIGATORIO: e a marca que o merge do sync
-              // usa para saber que esta mensagem esta sendo escrita e nao pode
-              // ser trocada pela conversa do outro aparelho. Sem ela, a resposta
-              // some da tela no meio do streaming.
-              return [...prev, { id: idProvisoria, role: 'assistant', content: acumulado, at: Date.now(), streaming: true }];
-            });
-          },
-          onDone: (dados) => {
-            clearTimeout(vigia);
-            registrar(
-              '5.onDone',
-              `reply=${String(dados && dados.reply ? dados.reply.length : 0)} conv=${dados && dados.conversationId ? 'sim' : 'NAO'}`,
-            );
-            if (dados?.conversationId) setConversationId(dados.conversationId);
-            // O "done" leva o texto completo: reconcilia caso algum
-            // pedaco tenha se perdido no caminho. Usa o acumulador LOCAL
-            // (stale closure do estado apagava a resposta), depois o
-            // texto parcial, e so por ultimo o fallback vazio.
-            const final = (dados?.reply && String(dados.reply).trim())
-              ? dados.reply
-              : (textoAcumulado && textoAcumulado.trim() ? textoAcumulado : '');
-            if (!final.trim()) {
-              // done sem texto: nao some com a conversa, mostra erro
-              // com "tentar de novo" em vez de bolha vazia.
-              diagTutor('onDone sem texto: mostrando erro');
-              setAiOffline(true);
-              setStatus('error');
-              setMessages((prev) => [
-                ...prev.filter((m) => m.id !== idProvisoria),
-                { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() },
-              ]);
-              setStreamText('');
-              return;
-            }
-            setMessages((prev) => {
-              const existe = prev.some((m) => m.id === idProvisoria);
-              const base = existe
-                ? prev.map((m) => (m.id === idProvisoria ? { ...m, content: final } : m))
-                : [...prev, { id: idProvisoria, role: 'assistant', content: final, at: Date.now() }];
-              // Mantemos o id e damos um `at` novo: e o que garante que
-              // esta conversa seja a mais recente no merge do sync. Antes
-              // o id era apagado e o `at` ficava igual ao da pergunta,
-              // entao o outro aparelho "ganhava" o merge e esta resposta
-              // sumia da tela. streaming:false libera o merge de novo.
-              return base.map((m) =>
-                m.id === idProvisoria
-                  ? { ...m, at: Date.now(), streaming: false, model: dados?.model }
-                  : m,
-              );
-            });
-            setStreamText('');
-            setStatus('idle');
-            // Confirma o que o estado realmente ficou: e este passo que
-            // diz se a bolha entrou na tela (streaming:false, id vivo).
-            setTimeout(() => {
-              setDiagLinhas(lerDiagTutor());
-            }, 0);
-          },
-          onError: (error) => {
-            registrar('X.onError', `code=${error?.code ?? '-'} status=${error?.status ?? '-'}`);
-            clearTimeout(vigia);
-            // Rate limit: mostra o tempo de espera e nao trata como falha.
-            if (error?.status === 429 || error?.code === 'rate_limited') {
-              setStatus('rate_limited');
-              setRetryAfter(error.retryAfterMs ?? 30000);
-              return;
-            }
-            setAiOffline(true);
-            setStatus('error');
-            setMessages((prev) => {
-              // Se ja chegou texto parcial, ele continua na bolha da
-              // tutora: nao apagamos o que a aluna ja leu. So adicionamos
-              // o aviso quando NAO chegou nada (bolha vazia nao ajuda).
-              if (textoAcumulado && textoAcumulado.trim()) {
-                return prev.map((m) => (
-                  m.id === idProvisoria
-                    ? { ...m, content: textoAcumulado, at: Date.now(), streaming: false }
-                    : m
-                ));
-              }
-              const temProvisoria = prev.some((m) => m.id === idProvisoria);
-              // Texto parcial continua util: nao apagamos o que a aluna leu.
-              const aviso = { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() };
-              if (!temProvisoria) return [...prev, aviso];
-              return prev.map((m) => (m.id === idProvisoria
-                ? { ...m, content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now(), streaming: false }
-                : m));
-            });
-            if (recebeuAlgo) setStreamText('');
-          },
-        },
+
+    // Os callbacks sao montados AQUI, em variaveis normais, para que
+    // seja impossivel esquecer um deles no objeto enviado.
+    //
+    // CAUSA RAIZ (30/09/2026): eles iam literais no SEGUNDO argumento
+    // de askTutorStream, mas a assinatura dela e UM UNICO objeto
+    // destruturado ({ messages, context, conversationId, onStart,
+    // onDelta, onDone, onError }). O segundo argumento era descartado
+    // em silencio: o SSE chegava inteiro (evento:start, evento:delta
+    // e evento:done apareciam no log) e os handlers chegavam como
+    // undefined, entao o parser rodava `a == null || a(X)`, nao fazia
+    // nada, e a resposta da Groq nunca entrava na lista de mensagens.
+    const onStart = () => {
+      registrar('1.onStart', 'a tutora comecou');
+      setStatus('streaming');
+    };
+
+    const onDelta = (_pedaco, acumulado) => {
+      recebeuAlgo = true;
+      textoAcumulado = acumulado;
+      // Rearma: a resposta esta chegando, o problema e so lentidao.
+      clearTimeout(vigia);
+      vigia = armarVigia();
+      // Loga no maximo ~1x por segundo (o primeiro pedaco sempre
+      // entra): o resto do trabalho por delta e so React.
+      const agora = Date.now();
+      if (ultimoLogDelta === 0 || agora - ultimoLogDelta > 1000) {
+        ultimoLogDelta = agora;
+        registrar('2.onDelta', `+${String(acumulado).length} chars`);
+      }
+      setStatus('streaming');
+      setStreamText(acumulado);
+      setMessages((prev) => {
+        const existe = prev.some((m) => m.id === idProvisoria);
+        if (existe) {
+          return prev.map((m) => (m.id === idProvisoria ? { ...m, content: acumulado, streaming: true } : m));
+        }
+        // 'streaming: true' e OBRIGATORIO: e a marca que o merge do sync
+        // usa para saber que esta mensagem esta sendo escrita e nao pode
+        // ser trocada pela conversa do outro aparelho. Sem ela, a resposta
+        // some da tela no meio do streaming.
+        return [...prev, { id: idProvisoria, role: 'assistant', content: acumulado, at: Date.now(), streaming: true }];
+      });
+    };
+
+    const onDone = (dados) => {
+      clearTimeout(vigia);
+      registrar(
+        '5.onDone',
+        `reply=${String(dados && dados.reply ? dados.reply.length : 0)} conv=${dados && dados.conversationId ? 'sim' : 'NAO'}`,
       );
+      if (dados?.conversationId) setConversationId(dados.conversationId);
+      // O "done" leva o texto completo: reconcilia caso algum
+      // pedaco tenha se perdido no caminho. Usa o acumulador LOCAL
+      // (stale closure do estado apagava a resposta), depois o
+      // texto parcial, e so por ultimo o fallback vazio.
+      const final = (dados?.reply && String(dados.reply).trim())
+        ? dados.reply
+        : (textoAcumulado && textoAcumulado.trim() ? textoAcumulado : '');
+      if (!final.trim()) {
+        // done sem texto: nao some com a conversa, mostra erro
+        // com "tentar de novo" em vez de bolha vazia.
+        registrar('5.onDone', 'sem texto: mostrando erro');
+        setAiOffline(true);
+        setStatus('error');
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== idProvisoria),
+          { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() },
+        ]);
+        setStreamText('');
+        return;
+      }
+      setMessages((prev) => {
+        const existe = prev.some((m) => m.id === idProvisoria);
+        const base = existe
+          ? prev.map((m) => (m.id === idProvisoria ? { ...m, content: final } : m))
+          : [...prev, { id: idProvisoria, role: 'assistant', content: final, at: Date.now() }];
+        // Mantemos o id e damos um `at` novo: e o que garante que
+        // esta conversa seja a mais recente no merge do sync. Antes
+        // o id era apagado e o `at` ficava igual ao da pergunta,
+        // entao o outro aparelho "ganhava" o merge e esta resposta
+        // sumia da tela. streaming:false libera o merge de novo.
+        return base.map((m) =>
+          m.id === idProvisoria
+            ? { ...m, at: Date.now(), streaming: false, model: dados?.model }
+            : m,
+        );
+      });
+      setStreamText('');
+      setStatus('idle');
+      // Confirma o que o estado realmente ficou: e este passo que
+      // diz se a bolha entrou na tela (streaming:false, id vivo).
+      setTimeout(() => {
+        setDiagLinhas(lerDiagTutor());
+      }, 0);
+    };
+
+    const onError = (error) => {
+      registrar('X.onError', `code=${error?.code ?? '-'} status=${error?.status ?? '-'}`);
+      clearTimeout(vigia);
+      // Rate limit: mostra o tempo de espera e nao trata como falha.
+      if (error?.status === 429 || error?.code === 'rate_limited') {
+        setStatus('rate_limited');
+        setRetryAfter(error.retryAfterMs ?? 30000);
+        return;
+      }
+      setAiOffline(true);
+      setStatus('error');
+      setMessages((prev) => {
+        // Se ja chegou texto parcial, ele continua na bolha da
+        // tutora: nao apagamos o que a aluna ja leu. So adicionamos
+        // o aviso quando NAO chegou nada (bolha vazia nao ajuda).
+        if (textoAcumulado && textoAcumulado.trim()) {
+          return prev.map((m) => (
+            m.id === idProvisoria
+              ? { ...m, content: textoAcumulado, at: Date.now(), streaming: false }
+              : m
+          ));
+        }
+        const temProvisoria = prev.some((m) => m.id === idProvisoria);
+        // Texto parcial continua util: nao apagamos o que a aluna leu.
+        const aviso = { role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now() };
+        if (!temProvisoria) return [...prev, aviso];
+        return prev.map((m) => (m.id === idProvisoria
+          ? { ...m, content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now(), streaming: false }
+          : m));
+      });
+      if (recebeuAlgo) setStreamText('');
+    };
+
+    // Prova de que os quatro callbacks existem de fato antes de enviar
+    // (o bug anterior era eles chegarem como undefined no streamTutor).
+    // Loga SO o tipo, nunca conteudo, token ou chave.
+    registrar(
+      'handlers',
+      `start=${typeof onStart} delta=${typeof onDelta} done=${typeof onDone} error=${typeof onError}`,
+    );
+
+    try {
+      // UM UNICO objeto: e a assinatura de askTutorStream.
+      await askTutorStream({
+        messages: [...janela, { role: 'user', content: clean }],
+        context,
+        conversationId,
+        onStart,
+        onDelta,
+        onDone,
+        onError,
+      });
     } catch (erro) {
       registrar('X.excecao', String(erro?.message ?? erro).slice(0, 80));
       clearTimeout(vigia);
