@@ -95,8 +95,30 @@ export function mergeSimulados(local = [], remote = []) {
   return [...map.values()].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
 }
 
-// Escolhe a conversa mais recente entre os dois aparelhos.
+/**
+ * Verdadeiro se a lista tem uma mensagem que a tutora AINDA esta
+ * escrevendo. Nesse caso a lista nao pode ser trocada por outra.
+ */
+export function isMensagemIncompleta(lista) {
+  return (lista || []).some((m) => m?.streaming === true);
+}
+
+/**
+ * Escolhe a conversa mais recente entre os dois aparelhos.
+ *
+ * CUIDADO (bug corrigido): a mensagem que a tutora esta escrevendo
+ * nasce com o mesmo `at` da pergunta (as duas usam Date.now() no mesmo
+ * instante). Se o outro aparelho gravou a conversa 3ms depois, o
+ * `lastChatAt` do remoto ganha e esta funcao TROCAVA a conversa em
+ * andamento pela conversa antiga - a resposta sumia da tela mesmo com
+ * HTTP 200 e SSE perfeito.
+ *
+ * Por isso: se qualquer lado tem mensagem incompleta, ele vence e nao
+ * ha troca. O merge so acontece com conversa parada.
+ */
 export function mergeChat(local = [], remote = []) {
+  if (isMensagemIncompleta(local)) return local || [];
+  if (isMensagemIncompleta(remote)) return remote || [];
   return lastChatAt(local) >= lastChatAt(remote) ? local || [] : remote || [];
 }
 

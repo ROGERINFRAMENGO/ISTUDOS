@@ -57,7 +57,12 @@ function loadChat() {
   if (typeof window === 'undefined') return null;
   try {
     const raw = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || 'null');
-    return Array.isArray(raw) && raw.length ? raw : null;
+    if (!Array.isArray(raw) || !raw.length) return null;
+    // Uma mensagem marcada como `streaming: true` ficou presa no meio da
+    // resposta quando a aba foi fechada. Sem este ajuste, o merge do sync
+    // achava que a tutora ainda estava escrevendo e travava a conversa
+    // inteira. Marcamos como concluida para o chat voltar a funcionar.
+    return raw.map((m) => (m?.streaming === true ? { ...m, streaming: false } : m));
   } catch {
     return null;
   }
@@ -257,9 +262,13 @@ export default function TutorChat({
             setMessages((prev) => {
               const existe = prev.some((m) => m.id === idProvisoria);
               if (existe) {
-                return prev.map((m) => (m.id === idProvisoria ? { ...m, content: acumulado } : m));
+                return prev.map((m) => (m.id === idProvisoria ? { ...m, content: acumulado, streaming: true } : m));
               }
-              return [...prev, { id: idProvisoria, role: 'assistant', content: acumulado, at: Date.now() }];
+              // 'streaming: true' e OBRIGATORIO: e a marca que o merge do sync
+              // usa para saber que esta mensagem esta sendo escrita e nao pode
+              // ser trocada pela conversa do outro aparelho. Sem ela, a resposta
+              // some da tela no meio do streaming.
+              return [...prev, { id: idProvisoria, role: 'assistant', content: acumulado, at: Date.now(), streaming: true }];
             });
           },
           onDone: (dados) => {
@@ -272,8 +281,15 @@ export default function TutorChat({
               const base = existe
                 ? prev.map((m) => (m.id === idProvisoria ? { ...m, content: final } : m))
                 : [...prev, { id: idProvisoria, role: 'assistant', content: final, at: Date.now() }];
+              // Mantemos o id e damos um `at` novo: e o que garante que
+              // esta conversa seja a mais recente no merge do sync. Antes
+              // o id era apagado e o `at` ficava igual ao da pergunta,
+              // entao o outro aparelho "ganhava" o merge e esta resposta
+              // sumia da tela. streaming:false libera o merge de novo.
               return base.map((m) =>
-                m.id === idProvisoria ? { ...m, id: undefined, streaming: false, model: dados?.model } : m,
+                m.id === idProvisoria
+                  ? { ...m, at: Date.now(), streaming: false, model: dados?.model }
+                  : m,
               );
             });
             setStreamText('');
