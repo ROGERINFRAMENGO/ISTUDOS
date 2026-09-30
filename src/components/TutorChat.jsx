@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   askTutorStream,
   AI_DISCONNECTED_MESSAGE,
@@ -241,7 +241,7 @@ export default function TutorChat({
     setMessages(minhasMensagens);
     setStatus('generating');
 
-    // Mensagem provisoria que vai recebendo o texto do Gemini.
+    // Mensagem provisoria que vai recebendo o texto do Tutor.
     const idProvisoria = `parcial-${Date.now()}`;
     let recebeuAlgo = false;
 

@@ -276,6 +276,16 @@ function lessonContextBlock(lesson) {
 /** Identidade fixa + contexto pontual da aula. */
 export function buildTutorSystemPrompt(context = {}) {
   const partes = [TUTOR_IDENTITY];
+  // O gpt-oss-20b e um modelo "reasoning": ele pode emitir raciocinio
+  // antes da resposta. Deixamos explicito que a resposta vem primeiro e
+  // curta, senao a aluna espera texto demais para uma duvida simples.
+  partes.push(
+    "\n\nCOMO RESPONDER AGORA (modelo gpt-oss-20b):\n" +
+      "- Entregue a resposta PRIMEIRO e de forma direta.\n" +
+      "- Raciocione o minimo necessario; nao despeje seu processo interno.\n" +
+      "- Se a duvida for simples, a resposta pode ter 3 a 6 frases.\n" +
+      "- Use paragrafos curtos. Nada de markdown, listas com asterisco ou titulo com #.",
+  );
   const extras = [];
   if (context.subject) extras.push(`Materia em foco: ${context.subject}`);
   if (context.topic) extras.push(`Topico em foco: ${context.topic}`);

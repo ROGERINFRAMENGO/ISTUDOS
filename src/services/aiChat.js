@@ -2,7 +2,7 @@
 // Servico do Tutor IA - camada unica de conversa com a IA
 // ------------------------------------------------------------
 // FASE 2: o chat usa a Edge Function "tutor-chat", que fala com o
-// GEMINI (o navegador NUNCA recebe a chave). A sessao (login anonimo)
+// GROQ (o navegador NUNCA recebe a chave). A sessao (login anonimo)
 // e garantida por src/services/ai.js.
 // A geracao de aulas segue separada, na NVIDIA, via "generate-lesson".
 //

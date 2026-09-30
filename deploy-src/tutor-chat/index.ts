@@ -1,5 +1,5 @@
-﻿import { authenticate, handleOptions, corsHeaders, json } from "./_http.js";
-import { complete, GeminiError } from "./_gemini.js";
+import { authenticate, handleOptions, corsHeaders, json } from "./_http.js";
+import { complete, GroqError } from "./_groq.js";
 import { buildTutorSystemPrompt } from "./_prompts.js";
 import { createDb } from "./_db.js";
 import { consumir } from "./_rateLimit.js";
@@ -11,14 +11,17 @@ import {
 } from "./_ai_config.js";
 
 // ============================================================
-// tutor-chat - a Tutora IA (Gemini) do ISTUDOS.
+// tutor-chat - a Tutora IA (GROQ) do ISTUDOS.
 // ------------------------------------------------------------
-// Provider: GEMINI. Separado da geracao de aulas (que usa DiffusionGemma
-// e o Muse Glimmer pela NVIDIA): trocar o modelo da aula nunca afeta o
-// chat, e trocar o modelo do chat nunca afeta a aula.
+// Provider: GROQ (API compativel com OpenAI), modelo
+// openai/gpt-oss-20b. Separado da geracao de aulas (que usa
+// DiffusionGemma e o Muse Glimmer pela NVIDIA): trocar o modelo da
+// aula nunca afeta o chat, e trocar o modelo do chat nunca afeta a
+// aula.
 //
-// Chave: SOMENTE o secret GEMINI_API_KEY. Ela nunca volta na resposta
-// nem entra no log.
+// Chave: SOMENTE o secret GROQ_API_KEY. Ela nunca volta na resposta
+// nem entra no log. A GEMINI_API_KEY continua guardada no Supabase,
+// mas o TutorChat nao a utiliza mais.
 //
 // Dois modos: { stream: true } devolve SSE pedaco a pedaco;
 // { stream: false } devolve JSON de uma vez. O historico fica no
@@ -34,22 +37,22 @@ function log(dados) {
 }
 
 /**
- * Historico -> contents do Gemini. Janela deslizante das ultimas
- * TUTOR_HISTORY_LIMIT mensagens: e o que faz "e gene?" continuar a
- * conversa de "nao entendi DNA".
+ * Historico -> messages no formato da API da Groq (compativel com
+ * OpenAI). Janela deslizante das ultimas TUTOR_HISTORY_LIMIT mensagens:
+ * e o que faz "e gene?" continuar a conversa de "nao entendi DNA".
  */
-function toGeminiContents(mensagens) {
+function toChatMessages(mensagens) {
   return mensagens
     .filter((m) => (m.role === "user" || m.role === "assistant") && String(m.content ?? "").trim())
     .slice(-TUTOR_HISTORY_LIMIT)
     .map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: String(m.content).slice(0, TUTOR_MAX_MESSAGE_CHARS) }],
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: String(m.content).slice(0, TUTOR_MAX_MESSAGE_CHARS),
     }));
 }
 
 function mapStatus(error) {
-  if (error instanceof GeminiError) {
+  if (error instanceof GroqError) {
     if (error.status === 429) return 429;
     if (error.status === 504) return 504;
     return 502;
@@ -57,11 +60,31 @@ function mapStatus(error) {
   return 502;
 }
 
+/**
+ * Mensagens para a aluna. NUNCA vazam stack, URL interna ou detalhe do
+ * provider: so a categoria do problema e o que ela pode fazer.
+ */
 function mensagemAmigavel(error) {
   const tipo = error?.message ?? "";
-  if (tipo === "tutor_timeout") return "Demorei demais para responder. Tenta de novo?";
-  if (tipo === "gemini_http_429") return "Mandei mensagens demais pro servidor. Espera alguns segundos.";
-  if (tipo === "tutor_network_error") return "Nao consegui falar com a IA agora. Verifica sua conexao.";
+  const status = error?.status ?? 0;
+  if (tipo === "tutor_timeout" || status === 504) {
+    return "A resposta demorou demais. Tenta novamente.";
+  }
+  if (status === 429) {
+    return "Tutor temporariamente indisponivel. Tente novamente em instantes.";
+  }
+  if (status === 401 || status === 403) {
+    return "Nao foi possivel autenticar o Tutor.";
+  }
+  if (status >= 500) {
+    return "O Tutor esta temporariamente indisponivel.";
+  }
+  if (tipo === "tutor_network_error" || status === 0) {
+    return "Nao foi possivel conectar ao Tutor.";
+  }
+  if (tipo === "groq_empty_reply") {
+    return "A tutora nao respondeu agora. Tenta de novo em um instante.";
+  }
   return "A tutora nao respondeu agora. Tenta de novo em um instante.";
 }
 
@@ -75,10 +98,10 @@ Deno.serve(async (req) => {
   const auth = await authenticate(req);
   if (!auth) return json({ error: "unauthorized", hint: "Ative o login anonimo no Supabase." }, 401, req);
 
-  const apiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
+  const apiKey = Deno.env.get("GROQ_API_KEY") ?? "";
   if (!apiKey) {
     log({ event: "tutor_not_configured" });
-    return json({ error: "ai_not_configured", message: "Defina o secret GEMINI_API_KEY." }, 503, req);
+    return json({ error: "ai_not_configured", message: "Defina o secret GROQ_API_KEY." }, 503, req);
   }
 
   let payload = {};
@@ -95,7 +118,7 @@ Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
 
-  // Etapa 13: rate limit ANTES de gastar cota do Gemini. O contador vive
+  // Etapa 13: rate limit ANTES de gastar cota do provider. O contador vive
   // no Postgres: as Edge Functions rodam em varias instancias e um Map em
   // memoria nunca acumularia entre elas (medido: nao bloqueava nunca).
   const limite = await consumir(auth.userId, { url, anonKey, token: auth.token });
@@ -149,7 +172,7 @@ Deno.serve(async (req) => {
 
   // A mensagem nova entra no prompt mesmo antes de ir para o banco,
   // para a aluna ver a resposta imediatamente.
-  const contents = toGeminiContents([...historico, { role: "user", content: textoUsuario }]);
+  const contents = toChatMessages([...historico, { role: "user", content: textoUsuario }]);
   if (!contents.length) return json({ error: "empty_history" }, 400, req);
 
   const system = buildTutorSystemPrompt(context);
@@ -188,7 +211,7 @@ Deno.serve(async (req) => {
   // POR QUE NAO USAR ReadableStream COM start() ASSINCRONO:
   // nesse formato o runtime da Edge agrupa as gravacoes e o cliente
   // recebe apenas o ULTIMO evento. Medido no site: o backend via 8
-  // chunks do Gemini, mas na rede chegavam so "start" e "done", com
+  // chunks do modelo, mas na rede chegavam so "start" e "done", com
   // ZERO eventos delta - a resposta aparecia de uma vez, sem animacao.
   //
   // A CORRECAO: pegamos o writer de um TransformStream e escrevemos
@@ -206,7 +229,7 @@ Deno.serve(async (req) => {
   complete(apiKey, opcoes, {
     log,
     onChunk: (pedaco) => {
-      // Sem await de proposito: nao seguramos a leitura do Gemini.
+      // Sem await de proposito: nao seguramos a leitura do modelo.
       void enviar("delta", { text: pedaco });
     },
   })

@@ -379,10 +379,10 @@ export async function regenerateLessonForPlan(plan, { performance = null, onStat
 }
 
 /**
- * Chat da Tutora IA (Gemini) com STREAMING (FASE 2).
+ * Chat da Tutora IA (Groq) com STREAMING.
  *
  * A resposta chega em pedacos (SSE) e onDelta e chamado conforme o texto
- * chega, para a tela mostrar a resposta crescendo. A chave do Gemini
+ * chega, para a tela mostrar a resposta crescendo. A chave do provider
  * NUNCA passa pelo navegador: ela e secret da Edge Function.
  *
  * Importante: a conexao SSE fica aberta (keep-alive), entao encerramos

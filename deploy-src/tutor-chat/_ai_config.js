@@ -7,7 +7,7 @@
 //
 // IMPORTANTE: o chat (Tutor IA) NAO usa este bloco. Ele tem a sua
 // propria configuração, ao final deste arquivo (TUTOR_*), porque
-// usa o Gemini e nao a NVIDIA. Trocar o modelo da aula nunca pode
+// usa a Groq e nao a NVIDIA. Trocar o modelo da aula nunca pode
 // mexer no modelo do chat, e vice-versa.
 // ============================================================
 
@@ -43,29 +43,46 @@ export const AI_REQUEST_TIMEOUT_MS = 140000;
 // ============================================================
 // TUTOR IA (chat) — provider SEPARADO da geracao de aulas.
 // ------------------------------------------------------------
-// Provider: Gemini (Google AI Studio / Generative Language API).
-// A chave vive SOMENTE no secret GEMINI_API_KEY da Edge Function.
+// PROVIDER ATUAL: GROQ (API compativel com OpenAI).
+// A chave vive SOMENTE no secret GROQ_API_KEY da Edge Function e
+// nunca chega ao navegador, nem entra em log ou resposta.
 //
-// SONDAGEM REAL desta chave (scripts/sondar-gemini.mjs):
-//   gemini-2.5-flash ...... 404 (bloqueado para contas novas)
-//   gemini-3.8-flash ...... OK, ~1-4s, mas 503 intermittently (demanda)
-//   gemini-flash-lite-latest . OK, ~0.9-1s, o mais estavel
-//   streamGenerateContent . OK (SSE), confirmado nas duas respostas
-// A ordem abaixo reflete a sondagem: tenta o 3.8 (qualidade), cai no
-// flash-lite (rapidez/estabilidade) se o primeiro estiver com demanda.
+// TROCA DE PROVIDER (FASE 3): o Tutor usava o Gemini. A chave do
+// Gemini ficou com 429 em todos os modelos, entao migramos para a
+// Groq, que responde em ~0,3-0,6s. A GEMINI_API_KEY continua
+// guardada no Supabase por seguranca, mas o TutorChat nao a usa.
+//
+// SONDAGEM REAL (tools/sondar-groq.mjs, 29/09/2026):
+//   openai/gpt-oss-20b ... HTTP 200, text/event-stream
+//   124-235 pedacos SSE por resposta
+//   primeiro token ....... 287ms (reasoning_effort=low)
+//   tempo total ......... 538-644ms
+//   reasoning ........... o modelo emite campo proprio (38-66 chars)
+//   rate limit .......... 1000 req/min, exposto em x-ratelimit-*
+//
+// O chat (Tutor IA) NAO usa o bloco AI_* acima: trocar o modelo da
+// aula nunca pode mexer no modelo do chat, e vice-versa.
 // ============================================================
 
-export const TUTOR_PROVIDER = "gemini";
-export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+export const TUTOR_PROVIDER = "groq";
+
+/** API compativel com OpenAI. */
+export const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+
+/** Nome do secret que guarda a chave. */
+export const TUTOR_API_KEY_SECRET = "GROQ_API_KEY";
 
 /**
- * Ordem de tentativa. O primeiro que responder vence; os proximos
- * so entram quando o anterior falha de forma TRANSITORIA (429/5xx).
- * Erro permanente (400/404) cai direto para o proximo sem insistir.
+ * Ordem de tentativa. O primeiro que responder vence; os proximos so
+ * entram quando o anterior falha de forma TRANSITORIA (429/5xx/rede).
+ * Erro permanente (400/401/404) cai direto sem insistir.
+ *
+ * Medido na sondagem: o gpt-oss-20b respondeu em 287-496ms, entao
+ * ele ja e o principal. O llama e apenas rede de seguranca.
  */
 export const TUTOR_MODELS = [
-  "gemini-3.8-flash",
-  "gemini-flash-lite-latest",
+  "openai/gpt-oss-20b",
+  "llama-3.3-70b-versatile",
 ];
 
 export const TUTOR_PRIMARY_MODEL = TUTOR_MODELS[0];
@@ -74,20 +91,33 @@ export const TUTOR_FALLBACK_MODEL = TUTOR_MODELS[1] ?? TUTOR_MODELS[0];
 export const TUTOR_TEMPERATURE = 0.6;
 export const TUTOR_MAX_TOKENS = 1500;
 
-// Timeout generoso: o chat tem de parecer instantaneo, mas uma travada
-// nao pode deixar a Edge Function pendurada ate o limite do gateway.
+/**
+ * Reasoning do gpt-oss-20b: "low" prioriza latencia, que e o que a
+ * aluna sente. Medido: 287ms de primeiro token com "low" contra 496ms
+ * sem configuracao. Para duvida de prova complexa a aluna pode pedir
+ * "pense com calma" no texto e a Tutora sobe para "medium".
+ */
+export const TUTOR_REASONING_DEFAULT = "low";
+export const TUTOR_REASONING_ALTO = "medium";
+
+/**
+ * Timeout generoso: o chat tem de parecer instantaneo, mas uma travada
+ * nao pode deixar a Edge Function pendurada ate o limite do gateway.
+ */
 export const TUTOR_TIMEOUT_MS = 45000;
 
-// Tentativas por modelo, apenas para erro transitorio (429/5xx/rede).
-// Com 2 modelos e 2 tentativas o pior caso e 4 chamadas, e ainda assim
-// cada uma respeita o timeout acima.
+/**
+ * Tentativas por modelo, apenas para erro transitorio (429/5xx/rede).
+ * Com 2 modelos e 2 tentativas o pior caso e 4 chamadas, e ainda assim
+ * cada uma respeita o timeout acima.
+ */
 export const TUTOR_MAX_ATTEMPTS = 2;
 export const TUTOR_BACKOFF_MS = 700;
 
 /**
- * Rate limit por usuario (janela deslizante em memoria da instancia).
+ * Rate limit por usuario (janela deslizante no Postgres).
  * 20 mensagens por minuto e folgado para uma sessao normal de estudo,
- * mas corta loop/spam acidental antes de gastar cota do Gemini.
+ * mas corta loop/spam acidental antes de gastar cota do provider.
  */
 export const TUTOR_RATE_LIMIT_MAX = 20;
 export const TUTOR_RATE_LIMIT_WINDOW_MS = 60000;
