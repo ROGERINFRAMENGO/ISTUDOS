@@ -240,7 +240,14 @@ export default function TutorChat({
   // ---------- Envio com streaming ----------
   const handleSend = async (text) => {
     const clean = String(text || '').trim();
-    if (!clean || isThinking) return;
+    if (!clean) return;
+    // NAO bloqueia quando ja esta pensando: antes disso, um envio que
+    // travasse deixava o botao em 'Respondendo...' para sempre e TODA
+    // mensagem nova era ignorada em silencio, sem nem registrar log.
+    if (isThinking) {
+      diagTutor('envio ignorado: ja estava pensando');
+      return;
+    }
 
     setInput('');
     setAiOffline(false);
@@ -273,6 +280,14 @@ export default function TutorChat({
     const idProvisoria = `parcial-${Date.now()}`;
     let recebeuAlgo = false;
 
+    // Vigia de seguranca: se nada acontecer (rede caiu, sessao travada,
+    // fetch pendurado), o status volta para idle e a aluna pode tentar de novo.
+    // Sem isto, um unico travamento prendia o chat para sempre.
+    const vigia = setTimeout(() => {
+      diagTutor('VIGIA: 30s sem resposta, destravando');
+      setStatus('error');
+      setStreamText('');
+    }, 30000);
     try {
       await askTutorStream(
         { messages: [...janela, { role: 'user', content: clean }], context, conversationId },
@@ -340,14 +355,18 @@ export default function TutorChat({
         },
       );
     } catch {
+      clearTimeout(vigia);
       if (status !== 'rate_limited') {
         setStatus('error');
         setMessages((prev) => [...prev, {
           role: 'assistant', content: AI_DISCONNECTED_MESSAGE, disconnected: true, at: Date.now(),
         }]);
       }
+    } finally {
+      clearTimeout(vigia);
     }
   };
+
 
   const clearChat = () => {
     setMessages([welcomeMessage(lessonContext)]);
@@ -437,8 +456,8 @@ export default function TutorChat({
         <div className="chat-diag">
           <p className="chat-diag-title">Diagnostico do Tutor</p>
           <p className="chat-diag-msgs">
-            Mensagens no estado: <strong>{messages.length}</strong> Â· status: <strong>{status}</strong>
-            {conversationId ? ' Â· conversa ok' : ' Â· SEM conversa'}
+            Mensagens no estado: <strong>{messages.length}</strong> Ã‚Â· status: <strong>{status}</strong>
+            {conversationId ? ' Ã‚Â· conversa ok' : ' Ã‚Â· SEM conversa'}
           </p>
           <pre className="chat-diag-estado">
             {messages
