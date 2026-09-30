@@ -1752,3 +1752,23 @@ h1, h2, h3, h4, p {
     visibility: hidden;
   }
 }
+
+/* ---------- Diagnostico do Tutor (temporario) ---------- */
+.chat-diag-bar { display: flex; justify-content: flex-end; padding: 4px 10px; }
+.chat-diag-status {
+  margin: 6px 10px; padding: 6px 10px; border-radius: 10px;
+  background: #fff4d6; color: #7a5b00; font-size: 13px;
+}
+.chat-diag {
+  margin: 8px 10px; padding: 10px; border-radius: 12px;
+  background: #1f2937; color: #e5e7eb; font-size: 12px;
+}
+.chat-diag-title { margin: 0 0 6px; font-weight: 700; color: #fbbf24; }
+.chat-diag-msgs { margin: 0 0 8px; }
+.chat-diag-log {
+  margin: 0 0 8px; padding: 8px; max-height: 190px; overflow: auto;
+  background: #111827; border-radius: 8px; white-space: pre-wrap;
+  word-break: break-all; font-size: 11px; line-height: 1.5;
+}
+.chat-diag-acoes { display: flex; gap: 6px; }
+.chat-diag-dica { margin: 8px 0 0; opacity: 0.75; font-size: 11px; }

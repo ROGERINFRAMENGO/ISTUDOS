@@ -6,6 +6,7 @@ import {
   isAiConfigured,
 } from '../services/aiChat';
 import { buildSimulado, loadSimulados, parseSimuladoIntent, saveSimulados } from '../services/simulados';
+import { lerDiagTutor, limparDiagTutor } from '../services/ai';
 import { isSyncConfigured, mergeChat, nowIso, pullShared, pushShared } from '../services/sync';
 import { subjects } from '../data/mockData';
 import { DAY_LABELS, formatDateBR, getDateKey, getDayKey } from '../data/lessons';
@@ -155,6 +156,20 @@ export default function TutorChat({
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncReady, messages]);
+
+  // ---------- Diagnostico do Tutor (remover quando o bug fechar) ----------
+  const [diagAberto, setDiagAberto] = useState(false);
+  const [diagLinhas, setDiagLinhas] = useState(() => lerDiagTutor());
+  const [statusTexto, setStatusTexto] = useState('');
+
+  // Reflete o status na tela: e o primeiro sinal de que travou.
+  useEffect(() => {
+    if (isThinking) {
+      setStatusTexto(status === 'generating' ? 'aguardando a tutora...' : 'escrevendo a resposta...');
+    } else {
+      setStatusTexto('');
+    }
+  }, [status, isThinking]);
 
   // Rola para o fim a cada pedaco novo: o texto tem que crescer visivel.
   useEffect(() => {
@@ -357,6 +372,11 @@ export default function TutorChat({
       </div>
 
       <div className="chat-messages" ref={listRef}>
+        {statusTexto && (
+          <p className="chat-diag-status" role="status">
+            {statusTexto}
+          </p>
+        )}
         {messages.map((message, index) => (
           <div key={`${message.at}-${index}`} className={`chat-message ${message.role}`}>
             <div className={`chat-bubble ${message.error ? 'chat-error' : ''}`}>
@@ -403,6 +423,46 @@ export default function TutorChat({
         )}
       </div>
 
+      {diagAberto && (
+        <div className="chat-diag">
+          <p className="chat-diag-title">Diagnostico do Tutor</p>
+          <p className="chat-diag-msgs">
+            Mensagens no estado: <strong>{messages.length}</strong> · status: <strong>{status}</strong>
+            {conversationId ? ' · conversa ok' : ' · SEM conversa'}
+          </p>
+          <pre className="chat-diag-log">
+            {diagLinhas.length ? diagLinhas.join('\n') : '(sem registros ainda)'}
+          </pre>
+          <div className="chat-diag-acoes">
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => setDiagLinhas(lerDiagTutor())}
+            >
+              Atualizar
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => {
+                limparDiagTutor();
+                setDiagLinhas([]);
+              }}
+            >
+              Limpar
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => setDiagAberto(false)}
+            >
+              Fechar
+            </button>
+          </div>
+          <p className="chat-diag-dica">Copie o texto acima e envie. Ele mostra em qual etapa parou.</p>
+        </div>
+      )}
+
       <div className="chat-suggestions">
         {suggestions.map((suggestion) => (
           <button
@@ -415,6 +475,12 @@ export default function TutorChat({
             {suggestion}
           </button>
         ))}
+      </div>
+
+      <div className="chat-diag-bar">
+        <button type="button" className="ghost-button" onClick={() => { setDiagLinhas(lerDiagTutor()); setDiagAberto((v) => !v); }}>
+          {diagAberto ? 'Fechar diagnostico' : 'Diagnostico'}
+        </button>
       </div>
 
       <form

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Comunicacao do frontend com a IA (SR no backend)
 // ------------------------------------------------------------
 // O navegador NUNCA fala com a NVIDIA e NUNCA tem a chave.
@@ -28,8 +28,8 @@ let blockReason = null;
 
 export const AI_MESSAGES = {
   noSession:
-    'A IA ainda não está liberada neste aparelho: falta ativar o login anônimo no Supabase (Authentication → Sign In → Allow anonymous sign-ins).',
-  offline: 'A IA não respondeu agora. Sua aula salva continua aqui — tente de novo em um minuto.',
+    'A IA ainda nÃ£o estÃ¡ liberada neste aparelho: falta ativar o login anÃ´nimo no Supabase (Authentication â†’ Sign In â†’ Allow anonymous sign-ins).',
+  offline: 'A IA nÃ£o respondeu agora. Sua aula salva continua aqui â€” tente de novo em um minuto.',
   generatingLesson: 'Gerando sua aula...',
   generatingQuiz: 'Preparando seu quiz...',
 };
@@ -311,7 +311,7 @@ export async function loadLessonForPlan(plan, { performance = null, onStatus } =
   };
 }
 
-/** Dá id às questões (o LessonPage usa question.id como chave das respostas). */
+/** DÃ¡ id Ã s questÃµes (o LessonPage usa question.id como chave das respostas). */
 function withQuestionIds(quiz) {
   if (!quiz) return null;
   const questions = (quiz.questions ?? []).map((question, index) => ({
@@ -389,6 +389,36 @@ export async function regenerateLessonForPlan(plan, { performance = null, onStat
  * no evento done/error em vez de esperar o fim do corpo. Sem isso a
  * interface ficaria travada em "Respondendo..." para sempre.
  */
+const DIAG_KEY = 'istudos_tutor_diag';
+
+function diag(etapa, detalhe) {
+  try {
+    const antes = JSON.parse(localStorage.getItem(DIAG_KEY) || '[]');
+    const linha = `${new Date().toISOString().slice(11, 19)} ${etapa}${detalhe ? ` ${detalhe}` : ''}`;
+    const depois = [...antes, linha].slice(-40);
+    localStorage.setItem(DIAG_KEY, JSON.stringify(depois));
+    console.log('[tutor-diag]', linha);
+  } catch {
+    // diagnostico nunca pode quebrar o chat
+  }
+}
+
+export function lerDiagTutor() {
+  try {
+    return JSON.parse(localStorage.getItem(DIAG_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function limparDiagTutor() {
+  try {
+    localStorage.removeItem(DIAG_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export async function streamTutor({ messages, context, conversationId }, handlers = {}) {
   const { onDelta, onDone, onError, onStart } = handlers;
   const token = await ensureAiSession();
@@ -412,6 +442,7 @@ export async function streamTutor({ messages, context, conversationId }, handler
       body: JSON.stringify({ messages, context, conversationId, stream: true }),
       signal: controller.signal,
     });
+    diag('fetch:resposta', `http=${response.status} ct=${response.headers.get('content-type')} body=${Boolean(response.body)}`);
 
     // Erro antes de comecar o stream: o corpo ainda e JSON comum.
     if (!response.ok && (response.headers.get('content-type') || '').includes('application/json')) {
@@ -425,20 +456,25 @@ export async function streamTutor({ messages, context, conversationId }, handler
     }
 
     if (!response.body) {
+      diag('erro', 'sem response.body');
       onError?.(new Error('Este navegador nao suporta leitura em streaming.'));
       return;
     }
 
     reader = response.body.getReader();
+    diag('reader:ok');
     const decoder = new TextDecoder();
     let buffer = '';
     let evento = null;
     let acumulado = '';
     let encerrou = false;
+    let recebeuDiagDelta = false;
+    let leituras = 0;
 
     while (!encerrou) {
       const { done, value } = await reader.read();
-      if (done) break;
+      leituras += 1;
+      if (done) { diag('reader:fechou', `leituras=${leituras} buffer=${buffer.length}`); break; }
       buffer += decoder.decode(value, { stream: true });
       const blocos = buffer.split('\n\n');
       buffer = blocos.pop() ?? '';
@@ -458,24 +494,33 @@ export async function streamTutor({ messages, context, conversationId }, handler
             continue;
           }
           if (evento === 'start') {
+            diag('evento:start');
             onStart?.(dados);
           } else if (evento === 'delta') {
             acumulado += dados.text ?? '';
+            if (!recebeuDiagDelta) {
+              recebeuDiagDelta = true;
+              diag('evento:delta-primeiro', `len=${dados.text?.length ?? 0}`);
+            }
             onDelta?.(dados.text ?? '', acumulado);
           } else if (evento === 'done') {
             encerrou = true;
+            diag('evento:done', `reply=${dados?.reply?.length ?? 0} model=${dados?.model ?? '-'}`);
+
             onDone?.(dados);
           } else if (evento === 'error') {
             const error = new Error(dados.message || AI_MESSAGES.offline);
             error.code = dados.error ?? 'tutor_error';
             error.status = 502;
             encerrou = true;
+            diag('evento:error', `${error.code} ${String(dados.message ?? '').slice(0, 90)}`);
             onError?.(error);
           }
         }
       }
     }
   } catch (error) {
+    diag('catch', `${error?.name ?? 'Error'}: ${String(error?.message ?? error).slice(0, 120)}`);
     if (error?.name === 'AbortError') return;
     onError?.(error);
   } finally {
