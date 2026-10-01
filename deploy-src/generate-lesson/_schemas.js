@@ -7,6 +7,9 @@
 // Edge Functions no Deno.
 // ============================================================
 
+import { verificarAula } from "./_mathCheck.js";
+import { verificarTexto } from "./_textCheck.js";
+
 // Textos que denunciam resposta incompleta / placeholder.
 const PLACEHOLDER_PATTERNS = [
   /cole\s+aqui/i,
@@ -451,7 +454,17 @@ export function validateLesson(raw, input = {}) {
     return {
       question: readString(item?.question, { field: `${at}.question`, errors, min: 15, max: 600 }),
       hint: readString(item?.hint, { field: `${at}.hint`, errors, min: 8, max: 300 }),
-      answer: readString(item?.answer, { field: `${at}.answer`, errors, min: 3, max: 400 }),
+      // FASE B: o minimo de 3 foi REMOVIDO de proposito, com evidencia
+      // de 40 casos. O piso rejeitava respostas numericas CORRETAS e
+      // minimas. Medido em gpt-oss-120b / numeros inteiros:
+      //   "(-12) + 5"   -> answer "-7" (2 chars)  rejeitada
+      //   "(-3) x (-8)" -> answer "24" (2 chars)  rejeitada
+      // Ambas sao as respostas certas. Contar caracteres nao distingue
+      // "-7" de um campo vazio, e nao e para isso que a regra existe:
+      // quem garante que a resposta existe e a checagem de vazio, e quem
+      // garante que ela combina com o enunciado e a coerencia
+      // enunciado/resposta/explicacao — ambas continuam intactas.
+      answer: readString(item?.answer, { field: `${at}.answer`, errors, min: 1, max: 400 }),
       explanation: readString(item?.explanation, { field: `${at}.explanation`, errors, min: 20, max: 1200 }),
     };
   });
@@ -545,6 +558,23 @@ export function validateLesson(raw, input = {}) {
   if (ondeDuplicou) {
     errors.push(`frase quebrada: palavra repetida ("${ondeDuplicou.trecho}")`);
   }
+
+  // (E3) FASE C: a conta e refeita de verdade. A checagem de coerencia
+  // acima so comparava os numeros entre si, entao "Resolva 45 * (-9)"
+  // com resposta "-5" passava: a resposta e a explicacao concordavam
+  // entre si, mesmo com o resultado errado. Aqui o verificador proprio
+  // recalcula a expressao. Se a expressao estiver fora do subconjunto
+  // seguro, ele nao reclama — nunca bloqueia por nao saber avaliar.
+  verificarAula({ sections, guidedPractice }).forEach((erro) => errors.push(erro));
+
+  // (E4) FASE C: corrupcao textual. "deas", "feita??" e texto cortado
+  // no meio passaram por todas as outras regras. Aqui a aula e
+  // REJEITADA (nunca corrigida): corrigir exigiria dicionario, e
+  // dicionario em materia tecnica estraga conteudo bom. O pipeline
+  // ja tem uma rodada de regeneracao, e o erro vai para ela.
+  verificarTexto({
+    title, introduction, sections, guidedPractice, commonMistakes, summary,
+  }).forEach((erro) => errors.push(erro));
 
   // (F) Topic alignment: os subtopicos do cronograma precisam aparecer.
   const subtopics = Array.isArray(input.subtopics) ? input.subtopics.filter(Boolean) : [];

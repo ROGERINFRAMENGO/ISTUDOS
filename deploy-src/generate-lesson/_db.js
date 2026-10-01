@@ -142,9 +142,27 @@ export function createDb({ url, anonKey, token }) {
       return rows?.[0] ?? null;
     },
 
+    /**
+     * Grava o quiz de (aula, dificuldade).
+     *
+     * FASE A: o `on_conflict` passou a ser explicito. Sem ele, o
+     * `Prefer: resolution=merge-duplicates` nao tem como saber qual
+     * coluna causa o conflito e o PostgREST devolve 409 "duplicate key
+     * value violates unique constraint". Na pratica, isso fazia a
+     * gravacao falhar sempre que ja existia um quiz para a mesma
+     * aula e dificuldade — ou seja, justamente no caso em que o
+     * quiz precisa ser regerado depois de um bump de versao. A
+     * aula continuava funcionando, mas nada era gravado e a aluna
+     * pagava uma nova geracao toda vez que abria a mesma aula.
+     *
+     * Sobrescrever aqui e seguro: a versao do conteudo ja foi
+     * conferida antes de gerar, e as tentativas antigas da aluna nao
+     * vivem nesta tabela (vivem em question_attempts).
+     */
     async saveQuiz({ userId, lessonId, subject, topic, difficulty, quizData, model }) {
       const rows = await request(QUIZZES_TABLE, {
         method: "POST",
+        query: "?on_conflict=lesson_id,difficulty",
         prefer: "resolution=merge-duplicates,return=representation",
         body: { user_id: userId, lesson_id: lessonId, subject, topic, difficulty, quiz_data: quizData, model },
       });

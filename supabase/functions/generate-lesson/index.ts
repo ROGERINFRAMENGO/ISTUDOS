@@ -78,7 +78,11 @@ async function tryModel(apiKey, model, messages, promptInput) {
     const correction = [
       messages[1].content, "",
       "SUA RESPOSTA ANTERIOR FOI REJEITADA. Corrija exatamente estes pontos e devolva o JSON inteiro de novo:",
-      validation.errors.slice(0, 12).map((error) => `- ${error}`).join("\n"),
+      // 16 e nao 12: a FASE C acrescentou as checagens de conta e de
+      // texto corrompido, que rodam por ULTIMO no validateLesson. Com
+      // corte em 12, um erro de matematica de verdade podia ficar de
+      // fora da lista e a correcao sair sem enxergar o problema.
+      validation.errors.slice(0, 16).map((error) => `- ${error}`).join("\n"),
     ].join("\n");
     const second = await requestJson(apiKey, {
       messages: [messages[0], { role: "user", content: correction }],

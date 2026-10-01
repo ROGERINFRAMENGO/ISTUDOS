@@ -17,17 +17,21 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(RAIZ, '.tmp-bench', 'fase-b', 'aulas');
 const SCHEMAS = path.join(RAIZ, 'supabase', 'functions', '_shared', 'schemas.js');
-const TMP = path.join(RAIZ, '.tmp-bench', 'fase-b', 'schemas-antes.mjs');
+const TMP = path.join(path.dirname(SCHEMAS), '_schemas-antes-temp.mjs');
 
 if (!fs.existsSync(DIR)) { console.error('sem aulas salvas — rode tools/auditar-fase-b.mjs'); process.exit(1); }
 
 // Reconstrói o validador DE ANTES: o mesmo arquivo, com o piso de 3
 // caracteres na `answer` restaurado. Nada mais muda.
 //
+// A copia temporaria precisa ficar AO LADO do original, e nao em
+// .tmp-bench: schemas.js hoje importa ./mathCheck.js e ./textCheck.js,
+// e um arquivo em outro diretorio nao resolveria esses imports.
+//
 // A substituicao usa uma FUNCAO de proposito. Com string, o
 // String.replace trata `$` como referencia de grupo, e o texto que
-// we're reescrevendo contem `${at}.answer` — o `$` seria expandido e o
-// arquivo de teste sairia corrompido, com o A/B medindo nada.
+// estamos reescrevendo contem `${at}.answer` — o `$` seria expandido
+// e o arquivo de teste sairia corrompido, com o A/B medindo nada.
 const atual = fs.readFileSync(SCHEMAS, 'utf8');
 const antes = atual.replace(
   /(answer: readString\(item\?\.answer,[^\n]*?min:\s*)1(,\s*max:\s*400\s*\}\s*\),)/,

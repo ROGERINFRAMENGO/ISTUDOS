@@ -23,9 +23,9 @@ import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SAIDA = path.join(RAIZ, '.tmp-bench', 'fase-b');
+const SAIDA = path.join(RAIZ, '.tmp-bench', 'fase-c');
 const DIR_AULAS = path.join(SAIDA, 'aulas');
-const ARQ = path.join(SAIDA, 'auditoria.json');
+const ARQ = path.join(SAIDA, 'auditoria-fase-c.json');
 const BASE = 'https://ehuwpvgcmssxrafsmtfo.supabase.co';
 const KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
 

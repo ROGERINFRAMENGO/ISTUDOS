@@ -72,9 +72,9 @@ const b2 = testa('answer de 1 caractere, coerente com a explicacao', (a) => {
   a.guidedPractice[2].answer = '5';
   a.guidedPractice[2].explanation = 'Como os dois sinais se anulam, o produto fica positivo: -2 x -5 = 5 na conta proposta.';
 });
-const b3 = testa('answer "-7" e explicacao citando -7', (a) => {
-  a.guidedPractice[0].answer = '-7';
-  a.guidedPractice[0].explanation = 'Partindo de -10 e andando 6 casas, chegamos a -7, porque -10 + 6 = -7.';
+const b3 = testa('answer "-4" reescrito, coerente com a explicacao', (a) => {
+  a.guidedPractice[0].answer = '-4';
+  a.guidedPractice[0].explanation = 'Partindo de -10 e somando 6 unidades, chegamos a -4, porque -10 + 6 = -4.';
 });
 
 console.log('\nO QUE A REGRA DEVE CONTINUAR REJEITANDO');

@@ -422,7 +422,7 @@ function montarCorrecao(userOriginal, errors) {
     userOriginal,
     "",
     "SUA RESPOSTA ANTERIOR FOI REJEITADA. Corrija exatamente estes pontos e devolva o JSON inteiro de novo:",
-    errors.slice(0, 12).map((e) => `- ${e}`).join("\n"),
+    errors.slice(0, 16).map((e) => `- ${e}`).join("\n"),
   ].join("\n");
 }
 

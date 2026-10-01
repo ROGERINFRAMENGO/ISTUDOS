@@ -7,6 +7,9 @@
 // Edge Functions no Deno.
 // ============================================================
 
+import { verificarAula } from "./mathCheck.js";
+import { verificarTexto } from "./textCheck.js";
+
 // Textos que denunciam resposta incompleta / placeholder.
 const PLACEHOLDER_PATTERNS = [
   /cole\s+aqui/i,
@@ -555,6 +558,23 @@ export function validateLesson(raw, input = {}) {
   if (ondeDuplicou) {
     errors.push(`frase quebrada: palavra repetida ("${ondeDuplicou.trecho}")`);
   }
+
+  // (E3) FASE C: a conta e refeita de verdade. A checagem de coerencia
+  // acima so comparava os numeros entre si, entao "Resolva 45 * (-9)"
+  // com resposta "-5" passava: a resposta e a explicacao concordavam
+  // entre si, mesmo com o resultado errado. Aqui o verificador proprio
+  // recalcula a expressao. Se a expressao estiver fora do subconjunto
+  // seguro, ele nao reclama — nunca bloqueia por nao saber avaliar.
+  verificarAula({ sections, guidedPractice }).forEach((erro) => errors.push(erro));
+
+  // (E4) FASE C: corrupcao textual. "deas", "feita??" e texto cortado
+  // no meio passaram por todas as outras regras. Aqui a aula e
+  // REJEITADA (nunca corrigida): corrigir exigiria dicionario, e
+  // dicionario em materia tecnica estraga conteudo bom. O pipeline
+  // ja tem uma rodada de regeneracao, e o erro vai para ela.
+  verificarTexto({
+    title, introduction, sections, guidedPractice, commonMistakes, summary,
+  }).forEach((erro) => errors.push(erro));
 
   // (F) Topic alignment: os subtopicos do cronograma precisam aparecer.
   const subtopics = Array.isArray(input.subtopics) ? input.subtopics.filter(Boolean) : [];
