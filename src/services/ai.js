@@ -425,6 +425,24 @@ function withQuestionIds(quiz) {
  * retorno ({ quiz, fromCache }), mesma cache, e ZERO requisicao de
  * rede - nenhuma funcionalidade nova foi criada.
  */
+/**
+ * O quiz guardado no cache local ainda e o da versao atual?
+ *
+ * Exportado porque a checagem precisa acontecer em DOIS lugares, e
+ * qualquer um dos dois esquecendo deixa a aluna presa num quiz velho:
+ *
+ *  1. aqui dentro, em loadQuizForLesson();
+ *  2. no App.jsx, no caminho rapido em que a aula JA esta em cache —
+ *     que faz setAiQuiz(cached.quiz) e NAO chama loadQuizForLesson.
+ *
+ * Antes da FASE A o quiz era montado localmente e nao tinha versao, e
+ * esse segundo caminho servia um quiz de 3 perguntas de habito de
+ * estudo para sempre, sem nunca chegar na Edge Function.
+ */
+export function isQuizAtual(entry) {
+  return Boolean(entry?.quiz?.questions?.length) && entry?.quizVersion === QUIZ_CONTENT_VERSION;
+}
+
 export async function loadQuizForLesson(
   plan,
   lessonId,
@@ -440,8 +458,7 @@ export async function loadQuizForLesson(
   // Um quiz descartado por estar em versao antiga NAO e apagado do
   // cache: e sobrescrito na proxima gravacao, e as tentativas dela
   // continuam registradas em question_attempts.
-  const quizEmDia = cached?.quiz?.questions?.length
-    && cached?.quizVersion === QUIZ_CONTENT_VERSION;
+  const quizEmDia = isQuizAtual(cached);
   if (quizEmDia) return { quiz: withQuestionIds(cached.quiz), fromCache: true };
 
   // A aula pode nao ter vindo no parametro quando ela foi salva no

@@ -45,6 +45,7 @@ import {
   AI_MESSAGES,
   getCachedLesson,
   getSharedCachePayload,
+  isQuizAtual,
   loadLessonForPlan,
   loadQuizForLesson,
   mergeSharedCache,
@@ -563,7 +564,14 @@ function App() {
     const cached = getCachedLesson(openPlan);
     if (cached?.lesson) {
       setAiLesson({ lesson: cached.lesson, lessonId: cached.lessonId ?? null, model: cached.model ?? null });
-      setAiQuiz(cached.quiz ?? null);
+      // FASE A: so reaproveita o quiz guardado se ele for da versao
+      // atual. Servir `cached.quiz` sem checar a versao prendia a
+      // aluna no quiz antigo de 3 perguntas de habito de estudo para
+      // sempre, porque este caminho retorna sem passar por
+      // loadQuizForLesson. Deixar aiQuiz vazio faz o efeito logo abaixo
+      // ("!lessonQuiz.length") chamar loadQuizForLesson, que regera
+      // respeitando a versao e o cache do servidor.
+      setAiQuiz(isQuizAtual(cached) ? cached.quiz : null);
       setAiStatus('');
       setAiError('');
       return undefined;
