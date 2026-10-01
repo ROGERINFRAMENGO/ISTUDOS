@@ -83,11 +83,24 @@ npx supabase login
 npx supabase link --project-ref ehuwpvgcmssxrafsmtfo
 npx supabase functions deploy generate-lesson
 npx supabase functions deploy tutor-chat
+npx supabase functions deploy generate-quiz
 npx supabase secrets set NVIDIA_API_KEY=nvapi-xxxxxxxx
 npx supabase secrets set GROQ_API_KEY=gsk_xxxxxxxx
+npx supabase secrets set GROQ_CONTENT_API_KEY=gsk_xxxxxxxx
 ```
 
-Estas são **as duas funções que o frontend usa**. Não existem `generate-quiz` nem `tutor`: o quiz é montado localmente por `src/data/lessonQuiz.js` e o chat fala só com `tutor-chat`. Um `deploy` delas não deve ser feito — e nenhuma chamada no bundle aponta para essas rotas (confira com `node tools/conferir-rotas-legadas.mjs`).
+Estas são **as três funções que o frontend usa**: `generate-lesson` (aula), `generate-quiz` (questionário) e `tutor-chat` (a Tutora).
+
+**FASE A (01/10/2026) — o quiz passou a ser gerado por IA.** Antes ele era montado localmente por `src/data/lessonQuiz.js`, que devolvia as mesmas três perguntas de hábito de estudo para qualquer matéria. Agora `generate-quiz` lê a aula real, pede um quiz ao `openai/gpt-oss-120b` (Groq) com JSON Schema estrito, valida com o `validateQuiz()` de produção e só grava o que passou. Se o Groq falhar, o app cai no quiz local de sempre — a estudante nunca fica sem questões.
+
+Duas credenciais Groq, e elas não se misturam:
+
+| Secret | Usado por | Nunca usado por |
+|---|---|---|
+| `GROQ_API_KEY` | `tutor-chat` (Tutora) | quiz |
+| `GROQ_CONTENT_API_KEY` | `generate-quiz` | Tutora |
+
+Nenhuma das duas chega ao navegador. O `ai-tutor` continua implantado e sem uso, como antes.
 
 E no **Dashboard** (não tem pela CLI): **Authentication → Sign In → Allow anonymous sign-ins = on**. Sem isso as funções devolvem `401` e o site mostra o aviso de "IA ainda não liberada" em vez de quebrar.
 

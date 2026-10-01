@@ -1,7 +1,7 @@
-import { authenticate, handleOptions, json } from "../_shared/http.js";
-import { validateQuiz } from "../_shared/schemas.js";
-import { buildQuizPrompt } from "../_shared/prompts.js";
-import { buildPerformance, createDb } from "../_shared/db.js";
+import { authenticate, handleOptions, json } from "./_http.js";
+import { validateQuiz } from "./_schemas.js";
+import { buildQuizPrompt } from "./_prompts.js";
+import { buildPerformance, createDb } from "./_db.js";
 import {
   QUIZ_API_KEY_SECRET,
   QUIZ_BACKOFF_MS,
@@ -15,7 +15,7 @@ import {
   QUIZ_REASONING,
   QUIZ_TEMPERATURE,
   QUIZ_TIMEOUT_MS,
-} from "../_shared/ai_config.js";
+} from "./_ai_config.js";
 
 // ============================================================
 // generate-quiz

@@ -21,7 +21,25 @@ import { getFullLessonQuiz } from '../data/lessonQuiz';
 const LOCAL_CACHE_KEY = 'istudos_ai_lessons';
 const MAX_LOCAL_ENTRIES = 40;
 const LESSON_TIMEOUT_MS = 150000;
-const QUIZ_TIMEOUT_MS = 120000;
+
+/**
+ * Timeout do quiz. Medido na FASE 1D: o gpt-oss-120b responde em 1,2 a
+ * 5,5 segundos. 45s e folgado o bastante para absorver um pico de
+ * demanda e curto o bastante para a aluna nao ficar olhando um
+ * carregamento longo. Se estourar, o catch cai no quiz local.
+ *
+ * Espelha QUIZ_TIMEOUT_MS de supabase/functions/_shared/ai_config.js.
+ * Se os dois divergirem, um deles espera demais e o outro corta cedo.
+ */
+const QUIZ_TIMEOUT_MS = 45000;
+
+/**
+ * Versao do conteudo do quiz. Precisa ser IGUAL a
+ * QUIZ_CONTENT_VERSION de supabase/functions/_shared/ai_config.js: e
+ * ela que impede o app de guardar no cache local um quiz de outra
+ * versao. Bump nos dois arquivos juntos.
+ */
+export const QUIZ_CONTENT_VERSION = 'gpt-oss-120b-v1';
 
 const DIAG_KEY = 'istudos_tutor_diag';
 
@@ -413,11 +431,21 @@ export async function loadQuizForLesson(
   { difficulty = 'medium', performance = null, lesson = null, onStatus } = {},
 ) {
   const cached = getCachedLesson(plan);
-  if (cached?.quiz?.questions?.length) return { quiz: withQuestionIds(cached.quiz), fromCache: true };
+
+  // So reaproveita o quiz guardado se ele for DA VERSAO ATUAL. Antes
+  // da FASE A o quiz era montado localmente e nao tinha versao: sem esta
+  // checagem, o navegador devolveria para sempre aquele quiz antigo de
+  // habito de estudo e a aluna nunca veria o quiz novo.
+  //
+  // Um quiz descartado por estar em versao antiga NAO e apagado do
+  // cache: e sobrescrito na proxima gravacao, e as tentativas dela
+  // continuam registradas em question_attempts.
+  const quizEmDia = cached?.quiz?.questions?.length
+    && cached?.quizVersion === QUIZ_CONTENT_VERSION;
+  if (quizEmDia) return { quiz: withQuestionIds(cached.quiz), fromCache: true };
 
   // A aula pode nao ter vindo no parametro quando ela foi salva no
-  // banco; o cache local ainda a tem. O plano do cronograma e o ultimo
-  // recurso (ele ja carrega id/subject/topic/objective).
+  // banco; o cache local ainda a tem.
   const base = lesson ?? cached?.lesson ?? null;
   if (!base) {
     const error = new Error('A aula ainda nao foi salva para gerar o quiz.');
@@ -425,17 +453,64 @@ export async function loadQuizForLesson(
     throw error;
   }
 
+  // FASE A (01/10/2026): o quiz passa a ser GERADO pela Edge Function
+  // generate-quiz (Groq, openai/gpt-oss-120b), que le a aula real,
+  // valida com o validateQuiz de producao e so grava o que passou.
+  //
+  // Antes o quiz era 100% local (getFullLessonQuiz), que devolvia as
+  // mesmas tres perguntas de habito de estudo para qualquer materia.
+  //
+  // O que NAO mudou: a mesma assinatura de retorno, o mesmo cache local,
+  // e o fallback local continua existindo para quando o Groq falha. A
+  // aluna nunca fica sem questoes.
   onStatus?.(AI_MESSAGES.generatingQuiz);
-  const questions = getFullLessonQuiz(base);
-  if (!questions.length) {
-    const error = new Error(AI_MESSAGES.offline);
-    error.code = 'invalid_quiz';
-    throw error;
-  }
+  try {
+    const result = await callFunction(
+      'generate-quiz',
+      {
+        lessonId: lessonId ?? null,
+        subject: base.subject ?? plan.subject ?? '',
+        topic: base.topic ?? plan.topic ?? '',
+        difficulty,
+        lesson,
+        studentPerformance: performance ?? {},
+      },
+      QUIZ_TIMEOUT_MS,
+    );
 
-  const quiz = withQuestionIds({ questions });
-  saveCachedLesson(plan, { quiz, quizId: null });
-  return { quiz, fromCache: false };
+    const quiz = withQuestionIds(result?.quiz);
+    if (!quiz?.questions?.length) throw new Error('quiz vazio');
+
+    saveCachedLesson(plan, {
+      quiz,
+      quizId: result.id ?? null,
+      quizModel: result.model ?? null,
+      // A versao e gravada JUNTO do quiz: sem ela o cache local nao
+      // saberia dizer se o que guardou ainda e o formato atual.
+      quizVersion: QUIZ_CONTENT_VERSION,
+      quizSource: 'generate-quiz',
+    });
+    return { quiz, fromCache: false, source: 'generate-quiz' };
+  } catch (error) {
+    // Fallback 1: tenta o cache do servidor na proxima abertura.
+    // Fallback 2: o quiz local de sempre, sem rede. A aluna continua
+    // respondendo normalmente; apenas a origem das questoes muda.
+    console.warn('[ai] generate-quiz indisponivel, usando quiz local:', error?.code ?? error?.message);
+    const questions = getFullLessonQuiz(base);
+    if (!questions.length) {
+      const fallbackError = new Error(AI_MESSAGES.offline);
+      fallbackError.code = 'invalid_quiz';
+      throw fallbackError;
+    }
+    const quiz = withQuestionIds({ questions });
+    saveCachedLesson(plan, {
+      quiz,
+      quizId: null,
+      quizVersion: QUIZ_CONTENT_VERSION,
+      quizSource: 'local-fallback',
+    });
+    return { quiz, fromCache: false, source: 'local-fallback' };
+  }
 }
 
 /** Forca uma nova versao da aula (botao "Gerar de novo"). */
