@@ -13,7 +13,7 @@ import {
   AI_PRIMARY_MODEL,
   AI_REQUEST_TIMEOUT_MS,
   AI_TEMPERATURE,
-} from "./ai_config.js";
+} from "./_ai_config.js";
 
 export { AI_BASE_URL, AI_PRIMARY_MODEL, AI_FALLBACK_MODEL };
 const DEFAULT_TEMPERATURE = AI_TEMPERATURE;
@@ -56,6 +56,7 @@ export async function chatCompletion(apiKey, options = {}) {
     baseUrl = AI_BASE_URL,
     model = AI_PRIMARY_MODEL,
     timeoutMs = DEFAULT_TIMEOUT_MS,
+    reasoning = undefined,
   } = options;
 
   if (!apiKey) {
@@ -65,6 +66,9 @@ export async function chatCompletion(apiKey, options = {}) {
   const body = { model, messages, temperature, top_p: 0.9, max_tokens: maxTokens, stream: false };
   if (jsonMode) body.response_format = { type: "json_object" };
   if (!thinking) body.chat_template_kwargs = { enable_thinking: false };
+  // Modelos de raciocinio (gpt-oss) aceitam reasoning_effort. Sem ele o
+  // modelo gasta todo o max_tokens pensando e devolve content vazio.
+  if (reasoning) body.reasoning_effort = reasoning;
   if (Array.isArray(tools) && tools.length) {
     body.tools = tools;
     body.tool_choice = toolChoice;

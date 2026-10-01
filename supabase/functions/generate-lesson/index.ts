@@ -13,7 +13,17 @@ import { AI_PRIMARY_MODEL, AI_FALLBACK_MODEL } from "../_shared/ai_config.js";
 // A chave NVIDIA_API_KEY existe apenas como secret desta funcao.
 // ============================================================
 
-const MAX_TOKENS = 2400;
+// Prioridade 1 (30/09/2026): o prompt passou a pedir uma aula mais
+// profunda (3 a 5 secoes, 1 ou 2 exemplos por secao, 3 a 5
+// exercicios, 3 a 5 erros comuns, 4 a 6 itens de resumo). Com o
+// teto antigo de 2400 o modelo cortava a geracao no MEIO do JSON e a
+// aula saia sem guidedPractice, sem commonMistakes e sem summary.
+//
+// O sintoma nao era "JSON invalido" e sim "JSON valido e incompleto",
+// entao o retry de malformed_json nao ajudava. O conserto e orcamento:
+// 3600 tokens cabem a aula nova inteira sem estourar o tempo do
+// modelo (DiffusionGemma gera ~6,6s para ciencia).
+const MAX_TOKENS = 3600;
 
 /** Log estruturado. NUNCA registra chave, token ou conteudo da aula. */
 function log(event, fields) {

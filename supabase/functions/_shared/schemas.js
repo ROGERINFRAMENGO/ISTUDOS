@@ -217,52 +217,100 @@ function findCoherenceIssues({ sections = [], guidedPractice = [] }) {
 /**
  * (4) PREMISSA CONTRADITA — o caso mais grave que ja aconteceu aqui.
  *
- * A aula de Ciencias affirmou "o gas carbonico e formado de N2" e
- * respondeu "substancia simples", confirmando a premissa falsa. A
- * aluna saia de la com a coisa errada decorada.
+ * A aula de Ciencias afirmou "o gas carbonico e formado de N2" e
+ * respondeu "substancia simples". O enunciado era falso e a resposta
+ * confirmava a premissa.
  *
- * Sem dicionario cientifico nao da para provar que um enunciado e
- * falso. O que da para ver sao DUAS ASSIMETRIAS que apareceram
- * justamente no erro real:
+ * LIMITACAO IMPORTANTE (medida em 30/09/2026): a primeira versao
+ * desta regra reprovava quase todas as aulas de Ciencias, porque
+ * "substancia simples ou composta" E o tema da propria aula.
+ * Responder "substancia simples" ali nao e erro: e o objetivo. Esta
+ * funcao nao e um fact checker e nao pode se comportar como um.
  *
- *   a) a resposta copia uma das CLASSIFICACOES do enunciado
- *      (simples/composta) sem dizer por que a OUTRA esta errada;
- *   b) a explicacao introduz um elemento ou formula que o enunciado
- *      NAO cita (o enunciado dizia N2, a explicacao puxou outra
- *      coisa), sinal de que o exemplo se contradiz.
- *
- * Heuristica com folga: so dispara quando a explicacao e curta e
- * nao questiona nada. Uma aula boa que ensina as duas opcoes passa.
+ * O que sobrou e um sinal estreito: a explicacao introduz um
+ * elemento ou formula que o enunciado NAO cita. E o formato exato
+ * do erro real (o enunciado dizia N2, a explicacao puxou carbono).
+ * A regra de CLASSIFICACAO foi removida de proposito.
  */
 function checarPremissaContradita({ at, problem = "", solution = "", explanation = "" }) {
   const problemas = [];
-  const CLASSIFICACOES =
-    /\b(simples|composta|homogenea|heterogenea|substancia simples|substancia composta)\b/gi;
-  const QUIMICOS = /\b(carbono|oxigenio|nitrogenio|hidrogenio|CO2|H2O|N2|O2|CO)\b/gi;
+  // Formula/elemento citado no enunciado, na solucao ou na explicacao.
+  const quimicos =
+    /\b(CO2|H2O|N2|O2|CO|C6H12O6|carbono|oxigenio|nitrogenio|hidrogenio|agua|gas carbonico|dioxido de carbono)\b/gi;
 
-  const noEnunciado = new Set((problem.match(CLASSIFICACOES) ?? []).map((s) => s.toLowerCase()));
-  const naResposta = new Set((solution.match(CLASSIFICACOES) ?? []).map((s) => s.toLowerCase()));
-  const ecoou = [...naResposta].filter((c) => noEnunciado.has(c));
+  const noEnunciado = new Set((problem.match(quimicos) ?? []).map(normalizaTermo));
+  const naExplicacao = new Set((explanation.match(quimicos) ?? []).map(normalizaTermo));
 
-  const enunciadoTem = new Set((problem.match(QUIMICOS) ?? []).map((s) => s.toLowerCase()));
-  const outros = new Set(
-    [...(solution.match(QUIMICOS) ?? []), ...(explanation.match(QUIMICOS) ?? [])]
-      .map((s) => s.toLowerCase()),
-  );
-  const quimicoNovo = [...outros].some((q) => !enunciadoTem.has(q));
+  // So checa se o enunciado realmente cita QUIMICA. Numa aula de
+  // matematica, portugues ou historia nao ha o que comparar.
+  if (noEnunciado.size === 0 || naExplicacao.size === 0) return problemas;
 
-  // (a) resposta ecoa a classificacao, sem justificar a alternativa.
-  const explicaAlternativa = explanation.includes("?") || explanation.length >= 300;
-  if (ecoou.length >= 1 && !explicaAlternativa) {
+  // A explicacao cita um termo quimico ausente do enunciado.
+  const naoCiteados = [...naExplicacao].filter((t) => !noEnunciado.has(t));
+  if (naoCiteados.length >= 1 && explanation.length < 500) {
     problemas.push(
-      `${at}: a resposta ecoa "${ecoou[0]}" do enunciado sem explicar por que a outra opcao esta errada`,
+      `${at}: a explicacao cita "${naoCiteados[0]}", que nao aparece no enunciado (conferir a premissa)`,
     );
   }
-  // (b) a explicacao introduz termo quimico ausente do enunciado.
-  if (quimicoNovo && enunciadoTem.size > 0 && explanation.length < 420) {
-    problemas.push(`${at}: a explicacao introduz termo ausente do enunciado (premissa possivelmente contraditoria)`);
-  }
   return problemas;
+}
+
+/**
+ * PALAVRA DUPLICADA (Prioridade 1) — frase quebrada por repeticao.
+ *
+ * Defeito real encontrado no site publicado em 30/09/2026 na aula de
+ * Historia: "...a organizacao burocratica do Estado de Estado antigo".
+ * O modelo montou "do Estado de Estado" e a frase ficou sem sentido.
+ * Nenhuma das outras heuristicas pega isso: nao e metadado, nao e
+ * placeholder, nao e markdown, nao corta a frase e a conta da aula esta
+ * toda certa. So a gramatica entrega o erro.
+ *
+ * Duas formas, ambas inequivocas:
+ *   1. "Estado de Estado", "revolucao da revolucao" — mesma palavra
+ *      dos dois lados de uma preposicao;
+ *   2. "de de", "a a", "com com" — preposicao ou artigo repetido.
+ *
+ * "que que" fica DE FORA de proposito: e gíria valide em portugues
+ * ("que que voce quer?") e reprovar a aula por causa disso seria
+ * exatamente o falso positivo que a heuristica precisa evitar.
+ * Tambem nao pega "um terco de um terco de x", que e conta legitima:
+ * a regex exige a MESMA palavra dos dois lados do conector.
+ */
+const PALAVRA_DUPLICADA_CONECTOR = /\b(\w{4,})\s+(?:de|do|da|em|no|na|nos|nas)\s+\1\b/gi;
+// Apenas conectores IDENTICOS dos dois lados. "de de", "com com",
+// "no no" sao sempre erro de digitacao ou de montagem.
+// A versao anterior aceitava qualquer par, e reprovava frase boa:
+// "a revolucao mudou o trabalho" casa "e a", e "para a prova" casa
+// "para a" — duas construcoes corretas do portugues. So repeticao
+// exata do mesmo conectores indica frase quebrada.
+const CONECTORES_REPETIDOS =
+  /\b(de|de|do|do|da|da|del|dela|em|em|no|no|na|na|nos|nos|nas|nas|para|para|por|por|com|com|sem|sem)\s+\1\b/i;
+
+/**
+ * @returns {{texto:string, trecho:string}|null}
+ */
+function findDuplicatedWords(...texts) {
+  for (const text of texts) {
+    const value = String(text ?? "");
+    if (!value) continue;
+
+    const conector = value.match(PALAVRA_DUPLICADA_CONECTOR);
+    if (conector) return { texto: value, trecho: conector[0] };
+
+    if (CONECTORES_REPETIDOS.test(value)) {
+      const achado = value.match(CONECTORES_REPETIDOS);
+      return { texto: value, trecho: achado?.[0] ?? "" };
+    }
+  }
+  return null;
+}
+
+/** Reduz "gas carbonico" e "dioxido de carbono" ao mesmo token CO2. */
+function normalizaTermo(texto) {
+  const t = String(texto).toLowerCase().trim();
+  if (/^(dioxido de carbono|gas carbonico|co2)$/.test(t)) return "co2";
+  if (/^(agua|h2o)$/.test(t)) return "h2o";
+  return t;
 }
 
 
@@ -326,6 +374,7 @@ export {
   findHollow,
   findRepetitions,
   findCoherenceIssues,
+  findDuplicatedWords,
   SCHEDULE_LEAK_PATTERNS,
 };
 
@@ -480,6 +529,22 @@ export function validateLesson(raw, input = {}) {
 
   // (E) Coerencia interna entre enunciado, solucao e explicacao.
   findCoherenceIssues({ sections, guidedPractice }).forEach((issue) => errors.push(issue));
+
+  // (E2) Frase quebrada por palavra duplicada. Defeito real visto no
+  // site: "organizacao burocratica do Estado de Estado antigo".
+  const ondeDuplicou = findDuplicatedWords(
+    introduction,
+    ...sections.map((s) => `${s.title} ${s.explanation}`),
+    ...sections.flatMap((s) =>
+      (s.examples ?? []).flatMap((ex) => [ex.problem, ex.solution, ex.explanation]),
+    ),
+    ...guidedPractice.flatMap((g) => [g.question, g.answer, g.explanation]),
+    ...commonMistakes,
+    ...summary,
+  );
+  if (ondeDuplicou) {
+    errors.push(`frase quebrada: palavra repetida ("${ondeDuplicou.trecho}")`);
+  }
 
   // (F) Topic alignment: os subtopicos do cronograma precisam aparecer.
   const subtopics = Array.isArray(input.subtopics) ? input.subtopics.filter(Boolean) : [];

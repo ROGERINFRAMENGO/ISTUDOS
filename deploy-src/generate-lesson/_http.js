@@ -17,11 +17,29 @@ function allowedOrigins() {
   return [...new Set([...DEFAULT_ORIGINS, ...extra])];
 }
 
+/**
+ * Desenvolvimento local: o Vite abre em http://192.168.x.x:5173 quando a
+ * aluna acessa pelo celular ou por outro aparelho na mesma rede. O
+ * regex antigo so aceitava "localhost" e "127.0.0.1", entao a origem
+ * real caia na allowlist e o navegador abortava o fetch com
+ * "TypeError: Failed to fetch" - sem a requisicao chegar na Edge
+ * Function. O sintoma era "a tutora nao responde no site".
+ *
+ * Aqui liberamos 127.0.0.0/8, 10.x, 172.16-31.x e 192.168.x, que sao
+ * faixas privadas e nunca publicas. A origem continua sendo devolvida
+ * (echo), nunca "*", porque a requisicao leva o header Authorization.
+ */
+function isRedePrivada(origin) {
+  return /^https?:\/\/(localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(
+    origin,
+  );
+}
+
 /** Devolve a origem da requisicao se ela estiver na allowlist. */
 export function corsHeaders(req) {
   const origin = req.headers.get("origin") ?? "";
   const allowed = allowedOrigins();
-  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  const isLocal = isRedePrivada(origin);
   const echo = origin && (allowed.includes(origin) || isLocal) ? origin : allowed[0];
   return {
     "Access-Control-Allow-Origin": echo,

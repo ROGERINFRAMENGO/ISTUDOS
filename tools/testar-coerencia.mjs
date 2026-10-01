@@ -6,7 +6,7 @@
 // Uso: node tools/testar-coerencia.mjs
 // ============================================================
 
-import { findCoherenceIssues, validateLesson } from '../supabase/functions/_shared/schemas.js';
+import { findCoherenceIssues, findDuplicatedWords, validateLesson } from '../supabase/functions/_shared/schemas.js';
 
 const ex = (problem, solution, explanation) => ({ problem, solution, explanation });
 
@@ -16,11 +16,19 @@ const soExemplos = (problem, solution, explanation) => ({
 });
 
 const CASOS = [
-  ['ERRO REAL: CO2 formado de N2', soExemplos(
+  // ERRO REAL: o enunciado diz N2 e a explicacao puxa "nitrogenio" +
+  // fala de "um tipo de elemento". Reproduz o formato do erro achado.
+  ['ERRO REAL: enunciado diz N2, explicacao fala de nitrogenio', soExemplos(
     'O gas carbonico e formado apenas por moleculas de N2. Ele e considerado uma substancia simples ou composta?',
     'O gas carbonico e uma substancia simples.',
     'Como a molecula e formada por apenas um tipo de elemento quimico, o nitrogenio, ela e classificada como substancia simples.',
   ), true],
+  // O tema da aula E essa classificacao: responder o termo NAO e erro.
+  ['Aula de Ciencias normal (nao pode reprovar)', soExemplos(
+    'O gas carbonico (CO2) e formado por moleculas com atomos de carbono e oxigenio. Ele e uma substancia simples ou composta?',
+    'Ele e uma substancia composta.',
+    'Ele e composta porque a molecula tem dois elementos diferentes: carbono e oxigenio.',
+  ), false],
   ['CONTA ERRADA', soExemplos(
     'Calcule 15 - 22 + (-7).',
     'A resposta e 5.',
@@ -137,6 +145,58 @@ checar('aula fora do tema e reprovada',
 checar('frase de preenchimento e reprovada',
   { ...aulaBase, introduction: 'Vou explicar o assunto a continuar no proximo bloco do cronograma.' },
   CTX, 'conteudo generico');
+
+// ------------------------------------------------------------
+// PALAVRA DUPLICADA (defeito real visto no site publicado)
+// ------------------------------------------------------------
+console.log('\n--- findDuplicatedWords ---');
+
+const DUPLICADOS = [
+  // ERRO REAL, copiado da aula de Historia gerada e publicada.
+  ['ERRO REAL: "organizacao burocratica do Estado de Estado antigo"', true,
+    'Isso mostra que a escrita nao surgiu apenas como forma de comunicacao, mas como uma ferramenta de poder politico e social. Em questoes de historia, quando o texto mencionar "controle de impostos" ou "funcao dos escribas", ele provavelmente esta falando da organizacao burocratica do Estado de Estado antigo.'],
+  ['"revolucao da revolucao"', true,
+    'A leitura desse tema ajuda a entender a dinamica da revolucao da revolucao francesa no periodo.'],
+  ['preposicao repetida "de de"', true,
+    'A resposta depende de varios fatores de de forma direta na question.'],
+  ['conector repetido "com com"', true,
+    'Ele apresenta o argumento com com muita força na conclusão.'],
+  // "a a" NAO e verificado de proposito: em portugues o par aparece
+  // em frase legitima ("a aula a seguir", "a.camera a direita"), e
+  // reprovar por isso seria falso positivo. So conector IDENTICO
+  // dos dois lados e sinal de frase quebrada.
+  ['"a a" ambiguo (nao pode reprovar)', false,
+    'A camera a direita mostra o enquadramento de forma clara e a luz ajuda. A leitura e boa.'],
+  // FALSOS POSITIVOS QUE NAO PODEM ACONTECER:
+  ['CONTA LEGITIMA: "um terco de um terco" (nao pode reprovar)', false,
+    'Se voce come um terco de um terco de uma pizza, sobra bem mais que a metade.'],
+  ['GIRIA "que que" (nao pode reprovar)', false,
+    'Que que voce ta tentando me dizer com essa frase?'],
+  ['REPETICAO LEGITIMA de substantivo em frase normal (nao pode reprovar)', false,
+    'A revolucao industrial transformou as cidades: a revolucao mudou o trabalho, a revolucao mudou a familia e a revolucao mudou a escola.'],
+  ['PALAVRA SIMILAR, nao identica (nao pode reprovar)', false,
+    'A leitura do texto e a leitura do enunciado pedem coisas diferentes.'],
+  ['TEXTO LIMPO e longo (nao pode reprovar)', false,
+    'O Estado egipcio organizava a cobranca de impostos por meio dos escribas, que registravam tudo em papiros e depois os contavam ao farao.'],
+];
+
+for (const [nome, devePegar, texto] of DUPLICADOS) {
+  const r = findDuplicatedWords(texto);
+  const pegou = r !== null;
+  const ok = pegou === devePegar;
+  if (!ok) falhas += 1;
+  console.log(`${ok ? 'OK   ' : 'FALHA'} ${nome}`);
+  console.log(`        esperado ${devePegar ? 'reprovar' : 'aprovar'} | obtido ${pegou ? 'reprovar' : 'aprovar'}${r ? ` ("${r.trecho}")` : ''}`);
+}
+
+checar('palavra duplicada na aula inteira e reprovada',
+  {
+    ...aulaBase,
+    sections: aulaBase.sections.map((s, i) => (i === 1
+      ? { ...s, explanation: LONGO + 'Isso mostra a organizacao do Estado de Estado antigo de um jeito bem claro.' }
+      : s)),
+  },
+  CTX, 'palavra repetida');
 
 console.log(`\nRESULTADO: ${falhas === 0 ? 'todos os casos passaram' : falhas + ' caso(s) falharam'}`);
 process.exit(falhas === 0 ? 0 : 1);

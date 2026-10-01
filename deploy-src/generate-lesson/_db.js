@@ -17,6 +17,31 @@ export class DbError extends Error {
 
 const LESSONS_TABLE = "generated_lessons";
 const QUIZZES_TABLE = "generated_quizzes";
+const TUTOR_CONVERSATIONS_TABLE = "tutor_conversations";
+const TUTOR_MESSAGES_TABLE = "tutor_messages";
+
+/**
+ * Chave logica da aula: abrir a mesma aula de novo nunca gera outra.
+ * O BLOCO entra na chave porque cada dia do cronograma tem dois blocos
+ * (55min + 55min) e eles sao aulas diferentes.
+ */
+/**
+ * Versao do CONTEUDO gerado pela IA. Entra na chave do cache junto com
+ * a versao do curriculo.
+ *
+ * Prioridade 1 (30/09/2026): o prompt da aula e o validateLesson()
+ * mudaram (proibicao de metadado do cronograma, defesa de coerencia,
+ * profundidade maior). As 25 aulas ja gravadas foram feitas com o
+ * prompt antigo e contem erros conhecidos. Bump nesta constante faz
+ * TODAS elas serem tratadas como cache miss e regeradas, sem apagar
+ * nada: progresso, conclusao, respostas, XP e historico ficam intactos,
+ * porque nao vivem em generated_lessons.
+ *
+ * O CLIENTE (src/services/ai.js) tem a MESMA constante. Se as duas
+ * divergirem, o app pede uma aula com a chave antiga, a Edge Function
+ * responde com a chave nova e o cache local fica inutil.
+ */
+export const LESSON_CONTENT_VERSION = "p1-aulas-2026-09-30";
 
 /**
  * Chave logica da aula: abrir a mesma aula de novo nunca gera outra.
@@ -26,6 +51,7 @@ const QUIZZES_TABLE = "generated_quizzes";
 export function lessonCacheKey({ curriculumVersion = "v1", week, day, dateKey, block, subject, topic }) {
   return [
     String(curriculumVersion || "v1"),
+    LESSON_CONTENT_VERSION,
     String(week ?? "?"),
     String(dateKey ?? day ?? "?"),
     `b${Number(block) || 1}`,
@@ -146,6 +172,91 @@ export function createDb({ url, anonKey, token }) {
         limit: String(limit),
       });
       return (rows ?? []).map((row) => row.lesson_id);
+    },
+
+    // -------------------------------------------------------
+    // Tutor IA (FASE 2) — historico do chat
+    // -------------------------------------------------------
+
+    /**
+     * Conversa ativa do usuario para (materia, tema). O indice unique
+     * garante uma so: reabrir o chat na mesma aula nao duplica. Fora
+     * da aula, subject/topic vazios = conversa geral.
+     */
+    async findOrCreateConversation({ userId, subject = "", topic = "", title, lessonId = null }) {
+      const filtros = {
+        user_id: `eq.${userId}`,
+        subject: subject ? `eq.${subject}` : "is.null",
+        topic: topic ? `eq.${topic}` : "is.null",
+        limit: "1",
+      };
+      const existente = (await select(TUTOR_CONVERSATIONS_TABLE, "id,title,subject,topic", filtros))?.[0];
+      if (existente) return existente;
+
+      // Duas abas podem chegar juntas: o unique index segura, entao
+      // tentamos inserir e, se falhar, releemos a que ficou.
+      //
+      // CUIDADO com o Prefer: "ignore-duplicates" faz o PostgREST
+      // devolver 201 com corpo VAZIO quando a linha ja existe. Por isso
+      // o insert usa "return=representation" SEM ignore-duplicates: se
+      // duplicar, o proprio banco responde 409 e a gente releem a linha
+      // que ficou - que e exatamente o que o teste de contexto exige.
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        let criadas = null;
+        try {
+          criadas = await request(TUTOR_CONVERSATIONS_TABLE, {
+            method: "POST", prefer: "return=representation",
+            body: {
+              user_id: userId,
+              title: String(title || topic || subject || "Conversa com a Tutora").slice(0, 90),
+              subject: subject || null,
+              topic: topic || null,
+              lesson_id: lessonId ?? null,
+            },
+          });
+        } catch (error) {
+          // 409 = ja existia (indice unico). Nao e falha: seguimos.
+          if (error?.status !== 409) throw error;
+        }
+        if (criadas?.[0]) return criadas[0];
+        const again = (await select(TUTOR_CONVERSATIONS_TABLE, "id,title,subject,topic", filtros))?.[0];
+        if (again) return again;
+      }
+      return null;
+    },
+
+    async listConversations(userId, limit = 20) {
+      const rows = await select(TUTOR_CONVERSATIONS_TABLE, "id,title,subject,topic,updated_at", {
+        user_id: `eq.${userId}`, order: "updated_at.desc", limit: String(limit),
+      });
+      return rows ?? [];
+    },
+
+    async recentMessages(conversationId, limit = 40) {
+      const rows = await select(TUTOR_MESSAGES_TABLE, "id,role,content,model,created_at", {
+        conversation_id: `eq.${conversationId}`, order: "created_at.asc", limit: String(limit),
+      });
+      return rows ?? [];
+    },
+
+    /** Grava a mensagem. O user_id vem do token, nunca do body. */
+    async saveMessage({ userId, conversationId, role, content, model = null }) {
+      const rows = await request(TUTOR_MESSAGES_TABLE, {
+        method: "POST", prefer: "return=representation",
+        body: { user_id: userId, conversation_id: conversationId, role, content, model },
+      });
+      // Mantem a conversa no topo do historico.
+      await request(TUTOR_CONVERSATIONS_TABLE, {
+        method: "PATCH", query: `?id=eq.${conversationId}`,
+        body: { updated_at: new Date().toISOString() },
+      });
+      return rows?.[0] ?? null;
+    },
+
+    async deleteConversation({ userId, conversationId }) {
+      return request(TUTOR_CONVERSATIONS_TABLE, {
+        method: "DELETE", query: `?id=eq.${conversationId}&user_id=eq.${userId}`,
+      });
     },
   };
 }

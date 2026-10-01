@@ -162,6 +162,12 @@ export function buildLessonPrompt(input) {
     "- Texto simples, sem markdown. Proibido ** , # , listas com - , e tabelas.",
     "- Use \\n para separar etapas de conta, e 'primeiro', 'depois', 'por fim' para enumerar.",
     "- Nenhum emoji, nenhum asterisco, nenhuma cercas de codigo.",
+    "",
+    "REGRA 8 - FRASE SEM DUPLICAR PALAVRA:",
+    "Antes de entregar, leia cada frase e confira se nao saiu nada como",
+    "'organizacao do Estado de Estado antigo', 'revolucao da revolucao' ou 'de de'.",
+    "Isso acontece quando a preposicao se repete: escreva 'do Estado antigo' e nao 'do Estado de Estado'.",
+    "Se a frase saiu torta, reescreva inteira. Frase quebrada reprova a aula.",
   ].join("\n");
 
   const user = [
