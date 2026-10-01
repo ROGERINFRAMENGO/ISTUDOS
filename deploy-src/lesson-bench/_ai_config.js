@@ -114,6 +114,81 @@ export const TUTOR_TIMEOUT_MS = 45000;
 export const TUTOR_MAX_ATTEMPTS = 2;
 export const TUTOR_BACKOFF_MS = 700;
 
+// ============================================================
+// QUIZ (provider SEPARADO do Tutor e da geracao de aulas)
+// ------------------------------------------------------------
+// PROVIDER: GROQ, mas com a CREDENCIAL DE CONTEUDO.
+//
+// REGRA: este bloco nao pode ser confundido com o Tutor. O Tutor usa
+// GROQ_API_KEY (TUTOR_API_KEY_SECRET) e NAO MUDA. O quiz usa
+// GROQ_CONTENT_API_KEY, que tem cota propria. Trocar o modelo do quiz
+// nunca pode mexer no chat, e vice-versa.
+//
+// O modelo foi escolhido pelo benchmark FASE 1D: 8 de 8 quizzes
+// passaram no validateQuiz de producao, com mediana de 2,8s, contra
+// 134s do muse-glimmer da NVIDIA.
+// ============================================================
+
+export const QUIZ_PROVIDER = "groq";
+
+/** API compativel com OpenAI. */
+export const QUIZ_BASE_URL = "https://api.groq.com/openai/v1";
+
+/** Nome do secret exclusivo de conteudo. NUNCA o do Tutor. */
+export const QUIZ_API_KEY_SECRET = "GROQ_CONTENT_API_KEY";
+
+export const QUIZ_MODEL = "openai/gpt-oss-120b";
+
+/**
+ * Versao do CONTEUDO do quiz. Entra no cache junto com a aula e a
+ * dificuldade. Bump aqui faz todos os quizzes virarem cache miss e
+ * serem regerados, sem apagar nada: tentativas, acertos, XP e historico
+ * vivem em question_attempts, nao em generated_quizzes.
+ *
+ * O CLIENTE (src/services/ai.js) tem a MESMA constante. Se as duas
+ * divergirem, o app pede um quiz de uma versao, a Edge Function
+ * responde com outra, e o cache local fica inutil.
+ */
+export const QUIZ_CONTENT_VERSION = "gpt-oss-120b-v1";
+
+/**
+ * Numero de questoes. A interface pede 5 ("Responda as 5 questoes", em
+ * LessonPage.jsx) e o validateQuiz() recusa menos que isso.
+ */
+export const QUIZ_QUESTION_COUNT = 5;
+
+export const QUIZ_TEMPERATURE = 0.5;
+
+/**
+ * Orcamento de tokens. Medido: um quiz do gpt-oss-120b gasta ~2700
+ * tokens. A cota observada da credencial e de 8000 TPM, entao dois
+ * quizzes seguidos ja consomem dois tercos do minuto. Nao baixar muito
+ * abaixo de 1500: com teto curto o modelo fecha o JSON pela metade e a
+ * chamada vira "max completion tokens reached".
+ */
+export const QUIZ_MAX_TOKENS = 8192;
+
+/**
+ * Raciocinio. Os modelos gpt-oss gastam tokens pensando, e isso conta
+ * no mesmo teto. A producao de aulas desliga o raciocinio
+ * (enable_thinking:false no lado NVIDIA); "low" mantem o modelo proximo
+ * desse comportamento sem perder a correcao do gabarito.
+ */
+export const QUIZ_REASONING = "low";
+
+/** Timeout: quiz de 2 a 6s na medicao, mas pico de demanda nao pode
+ * deixar a Edge Function pendurada ate o limite do gateway. */
+export const QUIZ_TIMEOUT_MS = 60000;
+
+/** Tentativas so para erro TRANSITORIO (429 de cota, 5xx, timeout, rede).
+ * Erro permanente (400 de schema, 401/403 de chave) cai direto. */
+export const QUIZ_MAX_ATTEMPTS = 3;
+export const QUIZ_BACKOFF_MS = 6000;
+
+/** Espera maxima de uma retentativa. No 429 o proprio Groq manda um
+ * "retry-after" e ele manda: respeitar evita martelar a cota. */
+export const QUIZ_MAX_BACKOFF_MS = 60000;
+
 /**
  * Rate limit por usuario (janela deslizante no Postgres).
  * 20 mensagens por minuto e folgado para uma sessao normal de estudo,

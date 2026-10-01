@@ -451,7 +451,17 @@ export function validateLesson(raw, input = {}) {
     return {
       question: readString(item?.question, { field: `${at}.question`, errors, min: 15, max: 600 }),
       hint: readString(item?.hint, { field: `${at}.hint`, errors, min: 8, max: 300 }),
-      answer: readString(item?.answer, { field: `${at}.answer`, errors, min: 3, max: 400 }),
+      // FASE B: o minimo de 3 foi REMOVIDO de proposito, com evidencia
+      // de 40 casos. O piso rejeitava respostas numericas CORRETAS e
+      // minimas. Medido em gpt-oss-120b / numeros inteiros:
+      //   "(-12) + 5"   -> answer "-7" (2 chars)  rejeitada
+      //   "(-3) x (-8)" -> answer "24" (2 chars)  rejeitada
+      // Ambas sao as respostas certas. Contar caracteres nao distingue
+      // "-7" de um campo vazio, e nao e para isso que a regra existe:
+      // quem garante que a resposta existe e a checagem de vazio, e quem
+      // garante que ela combina com o enunciado e a coerencia
+      // enunciado/resposta/explicacao — ambas continuam intactas.
+      answer: readString(item?.answer, { field: `${at}.answer`, errors, min: 1, max: 400 }),
       explanation: readString(item?.explanation, { field: `${at}.explanation`, errors, min: 20, max: 1200 }),
     };
   });

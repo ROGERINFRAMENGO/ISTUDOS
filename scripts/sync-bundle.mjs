@@ -43,7 +43,10 @@ for (const mod of modulos) {
     console.error(`ERRO: _shared/${mod}.js nao existe, mas ${nome}/index.ts importa.`);
     process.exit(1);
   }
-  arquivos[`_${mod}.js`] = fs.readFileSync(caminho, 'utf8');
+  // A copia achatada renomeia ai_config.js -> _ai_config.js, entao os
+  // imports internos do modulo precisam do mesmo prefixo. Sem isso o
+  // bundle sobe apontando para um arquivo que nao existe e da BOOT_ERROR.
+  arquivos[`_${mod}.js`] = fs.readFileSync(caminho, 'utf8').replace(/(from\s+["']\.\/)/g, '$1_');
 }
 
 fs.mkdirSync(destino, { recursive: true });
@@ -55,10 +58,14 @@ if (process.argv[3]) {
   fs.writeFileSync(process.argv[3], JSON.stringify(arquivos, null, 2), 'utf8');
 }
 
-// Todo import do index precisa ter o arquivo correspondente no bundle.
-const faltando = [...arquivos['index.ts'].matchAll(/from "\.\/(_[a-z_]+)\.js"/g)]
-  .map((m) => m[1])
-  .filter((mod) => !Object.hasOwn(arquivos, `${mod}.js`));
+// Todo import relativo de qualquer arquivo do bundle (index e cada
+// modulo copiado) precisa ter a chave correspondente no bundle.
+const faltando = Object.entries(arquivos).flatMap(([arquivo, codigo]) =>
+  [...codigo.matchAll(/from\s+["'](\.\/[^"']+\.js)["']/g)]
+    .map((m) => m[1].slice(2))
+    .filter((modulo) => !Object.hasOwn(arquivos, modulo))
+    .map((modulo) => `${arquivo} -> ${modulo}`),
+);
 
 console.log(`${nome}: ${Object.keys(arquivos).length} arquivos -> ${destino}`);
 console.log(`  modulos: ${modulos.join(', ') || '(nenhum)'}`);

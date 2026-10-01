@@ -426,6 +426,135 @@ function montarCorrecao(userOriginal, errors) {
   ].join("\n");
 }
 
+// ------------------------------------------------------------
+// SCHEMA ESTRITO NO DIALETO OPENAI (para o caminho groq)
+// ------------------------------------------------------------
+// A API OpenAI-compatible da Groq exige JSON Schema padrao:
+// tipos em MINUSCULO, todas as propriedades em "required" e
+// "additionalProperties": false. O LESSON_SCHEMA acima e o dialeto
+// do Gemini (OBJECT/ARRAY/STRING) e a API da Groq o rejeita com
+// "expected object root, got bool".
+//
+// A estrutura semantica e IDENTICA: e a mesma aula que a interface
+// consome e que o validateLesson() recebe.
+// ------------------------------------------------------------
+const S = { type: "string" };
+const OBJ = (props) => ({ type: "object", additionalProperties: false, properties: props, required: Object.keys(props) });
+const LESSON_SCHEMA_OPENAI = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: S,
+    objectives: { type: "array", items: S },
+    introduction: S,
+    sections: {
+      type: "array",
+      items: OBJ({
+        title: S,
+        explanation: S,
+        examples: {
+          type: "array",
+          items: OBJ({ problem: S, solution: S, explanation: S }),
+        },
+      }),
+    },
+    guidedPractice: {
+      type: "array",
+      items: OBJ({ question: S, hint: S, answer: S, explanation: S }),
+    },
+    commonMistakes: { type: "array", items: S },
+    summary: { type: "array", items: S },
+  },
+  required: ["title", "objectives", "introduction", "sections", "guidedPractice", "commonMistakes", "summary"],
+};
+
+// ------------------------------------------------------------
+// CAMADA GROQ (OpenAI-compatible + JSON Schema estrito)
+// ------------------------------------------------------------
+// Usada so pela auditoria da FASE B, para medir gpt-oss-20b e
+// qwen3.8-27b com o MESMO prompt e o MESMO validador. Nao entra em
+// producao: a geracao real de aulas continua na generate-lesson.
+// ------------------------------------------------------------
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+
+async function gerarGroq(apiKey, model, reasoning, system, user, maxTokens) {
+  const started = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 150000);
+  let res;
+  try {
+    res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "system", content: system }, { role: "user", content: user }],
+        temperature: 0.55,
+        max_tokens: maxTokens,
+        ...(reasoning ? { reasoning_effort: String(reasoning).toLowerCase() } : {}),
+        stream: false,
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "aula", strict: true, schema: LESSON_SCHEMA_OPENAI },
+        },
+      }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    clearTimeout(timer);
+    return {
+      ok: false,
+      error_kind: error?.name === "AbortError" ? "timeout" : "rede",
+      status: 0, ms: Date.now() - started,
+      erro: redact(error?.message ?? error, apiKey),
+    };
+  }
+  clearTimeout(timer);
+  const ms = Date.now() - started;
+  const bruto = await res.text();
+  let data = null;
+  try { data = JSON.parse(bruto); } catch { /* nao-JSON */ }
+  if (!res.ok) {
+    const msg = String(data?.error?.message ?? bruto ?? "");
+    const truncamento = /max completion tokens reached|truncated to fit/i.test(msg);
+    return {
+      ok: false,
+      error_kind: truncamento ? "truncamento_orcamento"
+        : res.status === 429 ? "cota_429"
+          : res.status === 400 ? "schema_error"
+            : res.status >= 500 ? "provider_error" : "http_error",
+      status: res.status, ms, erro: redact(msg, apiKey),
+    };
+  }
+  const choice = data?.choices?.[0];
+  const texto = String(choice?.message?.content ?? "");
+  let parsed = null;
+  if (texto.trim()) { try { parsed = JSON.parse(texto.trim()); } catch { /* quebra */ } }
+  if (!parsed) {
+    return {
+      ok: false,
+      error_kind: texto.trim() ? "json_error" : "vazio",
+      status: res.status, ms,
+      finish: choice?.finish_reason ?? null,
+      truncado: choice?.finish_reason === "length",
+      erro: texto.trim() ? redact(texto.slice(-250), apiKey) : "resposta sem conteudo",
+    };
+  }
+  return {
+    ok: true,
+    data: parsed,
+    status: res.status,
+    ms,
+    finish: choice?.finish_reason ?? null,
+    truncado: choice?.finish_reason === "length",
+    usage: {
+      prompt: data?.usage?.prompt_tokens ?? null,
+      saida: data?.usage?.completion_tokens ?? null,
+      total: data?.usage?.total_tokens ?? null,
+    },
+  };
+}
+
 Deno.serve(async (req) => {
   const options = handleOptions(req);
   if (options) return options;
@@ -438,6 +567,20 @@ Deno.serve(async (req) => {
   const configName = String(body.config ?? "");
   const config = CONFIGS[configName];
   if (!config) return json({ error: "config_desconhecida", configs: Object.keys(CONFIGS) }, 400, req);
+
+  // AUDITORIA DA FASE B: `modelo` e `provider` podem sobrescrever a
+  // config, para medir modelos que so existem no benchmark (gpt-oss-20b,
+  // qwen3.8-27b) e que nao tem entrada na lista de configs.
+  //
+  // ISTO NAO TOCA A PRODUCAO. A geracao de aulas de verdade usa
+  // generate-lesson; esta funcao e只在 de benchmark, e o override so
+  // entra quando o corpo traz explicitamente `modelo`.
+  const cfg = {
+    ...config,
+    model: String(body.modelo ?? "").trim() || config.model,
+    provider: String(body.provider ?? "").trim() || config.provider,
+    thinking: body.thinking === undefined ? config.thinking : (body.thinking || null),
+  };
 
   const input = body.input ?? {};
   const { system, user } = buildLessonPrompt(input);
@@ -454,10 +597,13 @@ Deno.serve(async (req) => {
     : (Deno.env.get("GEMINI_API_KEY_A") ?? "");
 };
 
-const apiKey = config.provider === "gemini"
+const contentKey = () => (Deno.env.get("GROQ_CONTENT_API_KEY") ?? "");
+const apiKey = cfg.provider === "gemini"
   ? apiKeyGemini()
-  : (Deno.env.get("NVIDIA_API_KEY") ?? "");
-  if (!apiKey) return json({ error: "provider_sem_chave", provider: config.provider }, 503, req);
+  : cfg.provider === "groq"
+    ? contentKey()
+    : (Deno.env.get("NVIDIA_API_KEY") ?? "");
+  if (!apiKey) return json({ error: "provider_sem_chave", provider: cfg.provider }, 503, req);
 
   // Modo diagnostico: nao gera aula, so mede o que o free tier aceita.
   if (body.modo === "carga") {
@@ -475,19 +621,21 @@ const apiKey = config.provider === "gemini"
   // o teto maximo (achado: 16384 deu 503 em 5 de 5 chamadas, enquanto
   // 8192 respondeu). O valor padrao ja cabe a aula inteira com folga.
   const teto = Math.min(TETO_MAX, Math.max(TETO_MIN, Number(body.maxTokens) || GEMINI_MAX_TOKENS));
-  const gerado = config.provider === "gemini"
-    ? await gerarGemini(apiKey, config.model, config.thinking, system, user, teto)
-    : await gerarNvidia(apiKey, config.model, system, user);
+  const gerado = cfg.provider === "gemini"
+    ? await gerarGemini(apiKey, cfg.model, cfg.thinking, system, user, teto)
+    : cfg.provider === "groq"
+      ? await gerarGroq(contentKey(), cfg.model, cfg.thinking, system, user, teto)
+      : await gerarNvidia(apiKey, cfg.model, system, user);
 
   const base = {
     config: configName,
-    provider: config.provider,
-    model: config.model,
-    thinking: config.thinking,
+    provider: cfg.provider,
+    model: cfg.model,
+    thinking: cfg.thinking,
     subject: input.subject ?? null,
     topic: input.topic ?? null,
     promptChars: String(system).length + String(user).length,
-    maxTokens: config.provider === "gemini" ? teto : 3600,
+    maxTokens: cfg.provider === "nvidia" ? 3600 : teto,
     totalMs: Date.now() - started,
   };
 
@@ -517,9 +665,11 @@ const apiKey = config.provider === "gemini"
   let correcao = null;
   if (!primeira.ok) {
     const promptCorrecao = montarCorrecao(user, primeira.errors);
-    const segunda = config.provider === "gemini"
-      ? await gerarGemini(apiKey, config.model, config.thinking, system, promptCorrecao, teto)
-      : await gerarNvidia(apiKey, config.model, system, promptCorrecao, 0.2);
+    const segunda = cfg.provider === "gemini"
+      ? await gerarGemini(apiKey, cfg.model, cfg.thinking, system, promptCorrecao, teto)
+      : cfg.provider === "groq"
+        ? await gerarGroq(contentKey(), cfg.model, cfg.thinking, system, promptCorrecao, teto)
+        : await gerarNvidia(apiKey, cfg.model, system, promptCorrecao, 0.2);
     correcao = {
       tentou: true,
       ok: segunda.ok,
@@ -564,7 +714,7 @@ const apiKey = config.provider === "gemini"
         subject: input.subject ?? null,
         topic: input.topic ?? null,
         lesson_data: validation.data ?? gerado.data,
-        model: `${configName}:${config.model}`,
+        model: `${configName}:${cfg.model}`,
       }),
     });
     if (!resposta.ok) saveFailed = true;
@@ -594,6 +744,15 @@ const apiKey = config.provider === "gemini"
     // modelo errou o CONTEUDO ou so a FORMA.
     bruto_quando_invalido: validation.ok ? null : JSON.stringify(gerado.data).slice(0, 1500),
     lesson: validation.ok ? validation.data : null,
+    // FASE B (auditoria): o benchmark guardava so 1500 caracteres da aula
+    // reprovada, e nao dava para saber a CAUSA real da reprovacao — so o
+    // primeiro erro aparecia. Estes campos existem para a auditoria poder
+    // reclassificar CADA erro de cada aula. O orquestrador remove
+    // `auditoria` antes de gravar o relatorio.
+    auditoria: {
+      erros_todos: validation.ok ? [] : validation.errors,
+      aula_bruta: validation.ok ? null : gerado.data,
+    },
     salvoId,
     saveFailed,
   }, 200, req);
