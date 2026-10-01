@@ -1,4 +1,5 @@
 // ============================================================
+// ============================================================
 // Gera uma aula REAL pela Edge Function publicada, com o payload
 // que o app manda, e mede o resultado. Prioridade 1: a aula nova
 // nao pode vazar metadado do cronograma nem vir rasa.
@@ -8,6 +9,7 @@
 
 const BASE = 'https://ehuwpvgcmssxrafsmtfo.supabase.co';
 const KEY = 'sb_publishable_bdkos3yStQsBGuPDFuuKcQ_jKO71nf3';
+import fs from 'node:fs';
 
 const subject = process.argv[2] ?? 'Matemática';
 const topic = process.argv[3] ?? 'numeros inteiros';
@@ -80,6 +82,52 @@ console.log(`chars: ${txt.length} | secoes: ${SECOES} | exemplos: ${EXEMPLOS} | 
 console.log(`erros comuns: ${lesson.commonMistakes?.length ?? 0} | resumo: ${lesson.summary?.length ?? 0}`);
 console.log(`media da explicacao: ${medExp} chars (piso novo: 600)`);
 for (const [nome, st] of lista) console.log(`${nome}: ${st}`);
+
+// Salva o JSON bruto em UTF-8: o console do PowerShell embaralha
+// acento e PODE cortar palavra, o que faz parecer defeito do modelo
+// onde nao ha. O arquivo e a evidencia confiavel.
+const saida = `.tmp-aula-${(subject || 'x').replace(/[^\w]/g, '')}.json`;
+fs.writeFileSync(saida, JSON.stringify(lesson, null, 2), 'utf8');
+console.log(`\nJSON integral salvo em ${saida} (leia o arquivo, nao o console)`);
+
+// Varredura deterministica por defeito de TEXTO, sem depender de
+// acento: palavra colada ("domesticaranimais") e sequencia sem
+// espaco que o modelo perdeu.
+const ACHADOS = [];
+const campos = [
+  ['introduction', lesson.introduction],
+  ...(lesson.sections ?? []).flatMap((s, i) => [
+    [`sections[${i}].explanation`, s.explanation],
+    ...(s.examples ?? []).flatMap((e, j) => [
+      [`sections[${i}].examples[${j}].problem`, e.problem],
+      [`sections[${i}].examples[${j}].solution`, e.solution],
+      [`sections[${i}].examples[${j}].explanation`, e.explanation],
+    ]),
+  ]),
+  ...(lesson.guidedPractice ?? []).flatMap((g, i) => [
+    [`guidedPractice[${i}].question`, g.question],
+    [`guidedPractice[${i}].answer`, g.answer],
+    [`guidedPractice[${i}].explanation`, g.explanation],
+  ]),
+];
+
+for (const [campo, texto] of campos) {
+  const t = String(texto ?? '');
+  // Mojibake: "Ã§", "Ã£" etc. — prova de que o texto nao e UTF-8.
+  if (/Ã.|â€|Â/.test(t)) ACHADOS.push([campo, 'mojibake', t.match(/.{0,18}(Ã.|â€|Â).{0,18}/)?.[0]]);
+  // Palavra colada: sequencia longa sem espaco que contem vogal.
+  const colada = t.match(/\b[A-Za-zÀ-ÿ]{12,}\b/g)?.filter((w) =>
+    !/(ç|ão|ções|mente|mente)$/i.test(w) && /[aeiouáéíóúàâêôãõ]{4}/i.test(w),
+  );
+  if (colada?.length) ACHADOS.push([campo, 'palavra colada', colada.join(', ').slice(0, 70)]);
+  // Frase que comeca com letra minuscula depois de ponto.
+  const semMaiuscula = t.match(/[.;:!?]\s+[a-zà-ÿ]/g);
+  if (semMaiuscula?.length) ACHADOS.push([campo, 'caixa baixa apos ponto', semMaiuscula.length + 'x']);
+}
+
+console.log(`\n--- varredura de texto (${campos.length} campos) ---`);
+if (!ACHADOS.length) console.log('nenhum defeito de texto encontrado');
+ACHADOS.slice(0, 20).forEach(([c, tipo, det]) => console.log(`  ${tipo} | ${c} | ${det}`));
 console.log('');
 console.log('--- introduction ---');
 console.log(lesson.introduction);
