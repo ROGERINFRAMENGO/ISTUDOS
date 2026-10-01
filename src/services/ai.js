@@ -438,6 +438,11 @@ function withQuestionIds(quiz) {
  * Antes da FASE A o quiz era montado localmente e nao tinha versao, e
  * esse segundo caminho servia um quiz de 3 perguntas de habito de
  * estudo para sempre, sem nunca chegar na Edge Function.
+ *
+ * O fallback local NAO recebe quizVersion de proposito (ver o catch em
+ * loadQuizForLesson): assim uma falha transitoria do Groq nao fixa a
+ * aluna no quiz genérico. Ela tenta a IA de novo no proximo acesso e
+ * se recupera sozinha quando o provider volta.
  */
 export function isQuizAtual(entry) {
   return Boolean(entry?.quiz?.questions?.length) && entry?.quizVersion === QUIZ_CONTENT_VERSION;
@@ -523,7 +528,12 @@ export async function loadQuizForLesson(
     saveCachedLesson(plan, {
       quiz,
       quizId: null,
-      quizVersion: QUIZ_CONTENT_VERSION,
+      // SEM quizVersion de proposito. Se o fallback fosse carimbado com
+      // a versao atual, isQuizAtual() diria "esta em dia" na proxima
+      // abertura e a aluna ficaria presa no quiz local para sempre, por
+      // causa de UMA falha transitoria do Groq. Sem o carimbo, a app
+      // tenta a IA de novo no proximo acesso, volta a cair no local se
+      // ela continuar fora, e se recupera sozinho quando voltar.
       quizSource: 'local-fallback',
     });
     return { quiz, fromCache: false, source: 'local-fallback' };
