@@ -38,6 +38,7 @@ import {
 } from './services/sync';
 import { getLessonDetail } from './data/lessonContent';
 import { getFullLessonQuiz } from './data/lessonQuiz';
+import CustomLessonsPage from './components/CustomLessonsPage';
 import { THEMES, applyTheme, loadTheme } from './data/themes';
 import { scheduleWeeks } from './data/schedule';
 import { getPlanDayById, isGeneratedDay, planDayToLesson, planLessonsForDate, totalGeneratedBlocks } from './data/curriculum';
@@ -59,6 +60,10 @@ import SimuladosPage from './components/SimuladosPage';
 const sidebarItems = [
   'Estudo de hoje',
   'Cronograma',
+  // FASE D: a tela de aulas personalizadas. Fica separada do
+  // cronograma de proposito — uma aula criada aqui nao entra no
+  // plano oficial nem no progresso.
+  'Minhas aulas',
   'Tutor IA',
   'Simulados',
   'Configurações',
@@ -259,6 +264,9 @@ function App() {
   const [lessonView, setLessonView] = useState('home');
   const [activePage, setActivePage] = useState('Estudo de hoje');
   const [openSimuladoId, setOpenSimuladoId] = useState(null);
+  // FASE D: aula personalizada aberta. Guarda { lesson, id } e nada
+  // mais — nao entra em completedLessonIds, nem em XP, nem em streak.
+  const [customLesson, setCustomLesson] = useState(null);
   const [themeName, setThemeName] = useState(() => loadTheme());
   // Meta diaria agora e por licao, nao por minuto.
   const [dailyGoal] = useState(1);
@@ -608,7 +616,16 @@ function App() {
   }, [openPlan?.id, aiNonce]);
 
   // Aula realmente exibida: cartao do cronograma + conteudo escrito pela IA.
+  //
+  // FASE D: quando existe uma aula personalizada aberta, ela tem
+  // prioridade e NAO depende de currentStudyLesson. O wrapper
+  // customLessonShape da a ela a MESMA forma de uma aula do
+  // cronograma, para LessonPage, getLessonDetail e o quiz
+  // funcionarem sem nenhum renderer novo.
   const generatedStudyLesson = useMemo(() => {
+    if (customLesson?.lesson) {
+      return { ...customLessonShape(customLesson.lesson), generated: true, lessonId: customLesson.id ?? null };
+    }
     const base = currentStudyLesson;
     if (!base?.plan || !aiLesson?.lesson) return base;
     return {
@@ -626,7 +643,11 @@ function App() {
       lessonId: aiLesson.lessonId,
       model: aiLesson.model,
     };
-  }, [currentStudyLesson, aiLesson]);
+  }, [currentStudyLesson, aiLesson, customLesson]);
+
+  // A aula personalizada nao entra no fluxo do cronograma: quem sabe
+  // disto e este booleano, usado no quiz e no envio.
+  const isCustomLessonOpen = Boolean(customLesson?.lesson);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -988,13 +1009,18 @@ function App() {
   // Quiz ainda NAO pronto: a aluna clicou, geramos agora e abrimos.
   // O botao nunca dependeu do quiz existir, entao este caminho sempre
   // acaba em quiz aberto ou em erro com "Tentar novamente".
+  //
+  // FASE D: a aula personalizada entra pelo MESMO caminho, com o
+  // lessonId da linha salva. O generate-quiz le a aula por esse id e
+  // o cache dele (generated_quizzes.lesson_id) funciona sem nenhuma
+  // alteracao: a coluna ja tem FK para generated_lessons.
   if (generatedStudyLesson?.generated && !lessonQuiz.length) {
     setIsPreparingQuiz(true);
     setQuizError('');
     setAiStatus('Preparando questionario...');
     try {
       const result = await loadQuizForLesson(openPlan, generatedStudyLesson.lessonId, {
-        lesson: aiLesson?.lesson ?? null,
+        lesson: generatedStudyLesson,
       });
       setAiQuiz(result.quiz);
       setAiStatus('');
@@ -1080,7 +1106,7 @@ function App() {
   const showResume = Boolean(resumeLesson?.lessonId) && lessonView === 'home' && !completedLessonIds.includes(resumeLesson.lessonId);
 
   const lessonHits = quizResults ? quizResults.filter((item) => item.isCorrect).length : 0;
-  const showLessonPage = currentStudyLesson && lessonView !== 'home' && lessonFlow !== 'list';
+  const showLessonPage = (currentStudyLesson || isCustomLessonOpen) && lessonView !== 'home' && lessonFlow !== 'list';
 
   // Texto do indicador de sincronização (usado na lateral e no topo).
   const syncBadgeText =
@@ -1290,6 +1316,24 @@ function App() {
           </>
         )}
 
+        {activePage === 'Minhas aulas' && (
+          <CustomLessonsPage
+            onBack={() => setActivePage('Estudo de hoje')}
+            onOpenLesson={({ lesson, lessonId }) => {
+              // Abre no MESMO LessonPage das aulas do cronograma.
+              // Nada de progresso, XP ou streak e tocado aqui.
+              setQuizAnswers({});
+              setQuizResults(null);
+              setQuizError('');
+              setAiQuiz(null);
+              setLessonSeconds(0);
+              setCustomLesson({ lesson, id: lessonId });
+              setLessonFlow('lesson');
+              setLessonView('lesson');
+            }}
+          />
+        )}
+
         {activePage === 'Cronograma' && (
           <SchedulePage
             weeks={scheduleWeeks}
@@ -1323,6 +1367,33 @@ function App() {
       </main>
     </div>
   );
+}
+
+/**
+ * FASE D — da a forma de uma aula do cronograma a uma aula
+ * personalizada, para LessonPage, getLessonDetail e o quiz
+ * funcionarem sem nenhum renderer novo.
+ *
+ * O `id` comeca com "custom:" de proposito: nunca colide com um id
+ * oficial, entao uma aula personalizada nao pode ser confundida com
+ * item do cronograma por acidente de chave.
+ */
+function customLessonShape(lesson) {
+  const objetivo = (lesson?.objectives ?? [])[0] ?? '';
+  const id = `custom:${lesson?.title ?? 'aula'}`;
+  return {
+    id,
+    plan: { id },
+    subject: 'Personalizada',
+    topic: lesson?.title ?? 'Aula personalizada',
+    title: lesson?.title ?? 'Aula personalizada',
+    objective: objetivo,
+    time: '',
+    color: '#c98ab5',
+    duration: lesson?.estimatedMinutes ?? 55,
+    videoUrl: '',
+    isCustom: true,
+  };
 }
 
 function TodayPanelContent(props) {

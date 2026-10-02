@@ -170,6 +170,109 @@ export function resetAiSession() {
 }
 
 /** POST numa Edge Function. Devolve o JSON ou lanca Error com .status/.code. */
+// ============================================================
+// FASE D — AULAS PERSONALIZADAS (cliente)
+// ============================================================
+//
+// Nada aqui guarda chave: a credencial vive no secret da Edge
+// Function. Este arquivo so chama e trata o que volta.
+//
+// Diferencas em relacao ao fluxo do cronograma, e por que:
+//
+//  1. Nao ha cache local. A aula personalizada e da CONTA, nao do
+//     aparelho:_two dispositivos_ precisam ver a mesma biblioteca.
+//     Guardar em localStorage faria a aluna perder a aula no
+//     celular. A lista vem do Supabase sempre.
+//  2. Nao ha chamada de IA para reabrir. Abrir uma aula da
+//     biblioteca e um SELECT puro, nunca um POST de geracao.
+//  3. O erro distingue cota de provider, porque a mensagem muda.
+
+const CUSTOM_REQUEST_MAX = 2000;
+const CUSTOM_LESSON_TIMEOUT_MS = 180000;
+
+const FALHAS = {
+  request_required: 'Escreva o que voce quer aprender.',
+  request_too_long: 'Seu pedido esta longo demais. Encurte um pouco.',
+  custom_ai_not_configured: 'A aula personalizada ainda nao esta disponivel. Seu pedido foi preservado.',
+  quota_diaria: 'O limite diario de uso da IA acabou. Tente de novo mais tarde — seu pedido foi preservado.',
+  quota_minuto: 'Muitas aulas seguidas. Espera um pouquinho e tenta de novo.',
+  timeout: 'A IA demorou demais. Tenta de novo — seu pedido foi preservado.',
+  validation: 'A IA montou a aula fora do formato. Nada foi salvo — tenta de novo.',
+  unauthorized: 'Sessao expirou. Recarrega a pagina e tenta de novo.',
+};
+
+function erroDeCustom(error) {
+  const code = error?.code ?? 'indisponivel';
+  return new Error(FALHAS[code] ?? 'Nao consegui gerar sua aula agora. Tenta de novo — seu pedido foi preservado.');
+}
+
+/**
+ * Gera a aula a partir do pedido em linguagem natural.
+ * @returns {Promise<{lesson:object, id:string|null}>}
+ */
+export async function createCustomLesson({ request, subject, topic, level, difficulty, style }) {
+  const texto = String(request ?? '').trim();
+  if (!texto) {
+    const error = new Error(FALHAS.request_required);
+    error.code = 'request_required';
+    throw error;
+  }
+  if (texto.length > CUSTOM_REQUEST_MAX) {
+    // Nao corta em silencio: o front ja avisou, e aqui recusamos.
+    const error = new Error(`${FALHAS.request_too_long} (limite ${CUSTOM_REQUEST_MAX}, seu pedido tem ${texto.length})`);
+    error.code = 'request_too_long';
+    throw error;
+  }
+
+  const result = await callFunction('generate-lesson', {
+    custom: true,
+    request: texto,
+    subject: subject ?? '',
+    topic: topic ?? '',
+    level: level ?? '',
+    difficulty: difficulty ?? '',
+    style: style ?? '',
+  }, CUSTOM_LESSON_TIMEOUT_MS);
+
+  if (!result?.lesson) throw erroDeCustom(result);
+  return { lesson: result.lesson, id: result.id ?? null };
+}
+
+/** Lista "Minhas aulas". Leitura pura, sem IA. */
+export async function listCustomLessons() {
+  const token = await ensureAiSession();
+  if (!token) return [];
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/custom-lessons`, {
+    method: 'GET',
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) return [];
+  const payload = await response.json().catch(() => null);
+  return Array.isArray(payload?.lessons) ? payload.lessons : [];
+}
+
+/** Exclui uma aula personalizada. O banco recusa se nao for 'custom'. */
+export async function deleteCustomLesson(id) {
+  const token = await ensureAiSession();
+  if (!token) throw new Error('Sessao expirou. Recarrega a pagina.');
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/custom-lessons`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ id }),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message ?? 'Nao consegui excluir essa aula.');
+  }
+  return true;
+}
+
+export { CUSTOM_REQUEST_MAX };
+
 async function callFunction(slug, body, timeoutMs) {
   const token = await ensureAiSession();
   if (!token) {

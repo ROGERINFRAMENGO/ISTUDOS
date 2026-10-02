@@ -33,16 +33,32 @@ if (!fs.existsSync(fonte)) {
 }
 
 const original = fs.readFileSync(fonte, 'utf8');
-const modulos = [...new Set([...original.matchAll(/["']\.\.\/_shared\/([a-zA-Z_]+)\.js["']/g)].map((m) => m[1]))];
+
+// Resolve a arvore de dependencias de _shared, nao so o primeiro
+// nivel. A FASE C introduziu schemas.js -> mathCheck.js e
+// schemas.js -> textCheck.js: sao imports DENTRO de um modulo
+// compartilhado, e o codigo antigo so varria o index.ts. O
+// resultado era um bundle sem esses dois arquivos e um BOOT_ERROR
+// em producao.
+const modulos = [];
+const fila = [...original.matchAll(/["']\.\.\/_shared\/([a-zA-Z_]+)\.js["']/g)].map((m) => m[1]);
+while (fila.length) {
+  const mod = fila.shift();
+  if (modulos.includes(mod)) continue;
+  modulos.push(mod);
+  const caminho = path.join(shared, `${mod}.js`);
+  if (!fs.existsSync(caminho)) {
+    console.error(`ERRO: _shared/${mod}.js nao existe, mas a arvore de ${nome} importa.`);
+    process.exit(1);
+  }
+  const fonteMod = fs.readFileSync(caminho, 'utf8');
+  for (const m of fonteMod.matchAll(/["']\.\/([a-zA-Z_]+)\.js["']/g)) fila.push(m[1]);
+}
 
 const arquivos = { 'index.ts': original.replace(/(["'])\.\.\/_shared\/([a-zA-Z_]+)\.js\1/g, '$1./_$2.js$1') };
 
 for (const mod of modulos) {
   const caminho = path.join(shared, `${mod}.js`);
-  if (!fs.existsSync(caminho)) {
-    console.error(`ERRO: _shared/${mod}.js nao existe, mas ${nome}/index.ts importa.`);
-    process.exit(1);
-  }
   // A copia achatada renomeia ai_config.js -> _ai_config.js, entao os
   // imports internos do modulo precisam do mesmo prefixo. Sem isso o
   // bundle sobe apontando para um arquivo que nao existe e da BOOT_ERROR.

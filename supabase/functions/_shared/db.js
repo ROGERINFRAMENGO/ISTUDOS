@@ -113,7 +113,7 @@ export function createDb({ url, anonKey, token }) {
     },
 
     /** Grava a aula. O user_id e o do token, nunca o do body. */
-    async saveLesson({ userId, cacheKey, curriculumVersion, week, day, dateKey, subject, topic, lessonData, model }) {
+    async saveLesson({ userId, cacheKey, curriculumVersion, week, day, dateKey, subject, topic, lessonData, model, kind = "curriculum", customPrompt = null, customSubject = null, customLevel = null, customStyle = null }) {
       const rows = await request(LESSONS_TABLE, {
         method: "POST",
         prefer: "resolution=merge-duplicates,return=representation",
@@ -128,7 +128,42 @@ export function createDb({ url, anonKey, token }) {
           topic,
           lesson_data: lessonData,
           model,
+          // FASE D: o discriminador que separa aula personalizada de
+          // aula do cronograma. Default 'curriculum' mantem o
+          // comportamento antigo sem tocar nas linhas existentes.
+          kind,
+          custom_prompt: customPrompt,
+          custom_subject: customSubject,
+          custom_level: customLevel,
+          custom_style: customStyle,
         },
+      });
+      return rows?.[0] ?? null;
+    },
+
+    /**
+     * FASE D: "Minhas aulas".
+     *
+     * O RLS ja restringe a auth.uid() = user_id, entao a lista so
+     * pode devolver linhas da propria estudante — nao ha filtro de
+     * user_id aqui de proposito: seria redundante e passaria a
+     * impressao de que o isolamento depende do codigo, quando quem
+     * garante e o banco.
+     */
+    async listCustomLessons(limit = 100) {
+      const rows = await select(LESSONS_TABLE, "id,subject,topic,lesson_data,model,custom_prompt,custom_level,custom_style,created_at", {
+        kind: "eq.custom",
+        order: "created_at.desc",
+        limit: String(limit),
+      });
+      return rows ?? [];
+    },
+
+    /** FASE D: excluir uma aula personalizada. */
+    async deleteLesson(id) {
+      const rows = await request(`${LESSONS_TABLE}?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        prefer: "return=representation",
       });
       return rows?.[0] ?? null;
     },

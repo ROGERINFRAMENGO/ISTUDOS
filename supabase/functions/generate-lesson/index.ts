@@ -1,9 +1,13 @@
 import { authenticate, handleOptions, json } from "../_shared/http.js";
-import { requestJson, AiError } from "../_shared/nvidia.js";
 import { validateLesson } from "../_shared/schemas.js";
-import { buildLessonPrompt } from "../_shared/prompts.js";
+import { buildLessonPrompt, buildCustomLessonPrompt } from "../_shared/prompts.js";
 import { buildPerformance, createDb, lessonCacheKey } from "../_shared/db.js";
 import { AI_PRIMARY_MODEL, AI_FALLBACK_MODEL } from "../_shared/ai_config.js";
+import { requestJson, AiError } from "../_shared/nvidia.js";
+// FASE D. groqContent.js e separado de _shared/groq.js (que e do
+// Tutor) de proposito: nenhum dos dois importa o outro, e a chave
+// chega por parametro.
+import { gerarConteudoEstruturado } from "../_shared/groqContent.js";
 
 // ============================================================
 // generate-lesson
@@ -100,6 +104,58 @@ async function tryModel(apiKey, model, messages, promptInput) {
   };
 }
 
+// ============================================================
+// FASE D — SCHEMA ESTRITO (dialeto OpenAI / Groq)
+// ============================================================
+//
+// A API OpenAI-compatible da Groq exige JSON Schema padrao: tipos em
+// MINUSCULO, todas as propriedades em "required" e
+// "additionalProperties": false. O schema da aula e IDENTICO ao do
+// cronograma, so que escrito no dialeto que ela aceita.
+//
+// A forma e a mesma que a interface consome e que o validateLesson
+// recebe: nenhuma etapa seguinte precisa saber que a aula nasceu de
+// um pedido em linguagem natural.
+// ============================================================
+const TIPO_TEXTO = { type: "string" };
+const objeto = (props) => ({
+  type: "object",
+  additionalProperties: false,
+  properties: props,
+  required: Object.keys(props),
+});
+
+export const LESSON_SCHEMA_OPENAI = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: TIPO_TEXTO,
+    objectives: { type: "array", items: TIPO_TEXTO },
+    introduction: TIPO_TEXTO,
+    sections: {
+      type: "array",
+      items: objeto({
+        title: TIPO_TEXTO,
+        explanation: TIPO_TEXTO,
+        examples: {
+          type: "array",
+          items: objeto({ problem: TIPO_TEXTO, solution: TIPO_TEXTO, explanation: TIPO_TEXTO }),
+        },
+      }),
+    },
+    guidedPractice: {
+      type: "array",
+      items: objeto({ question: TIPO_TEXTO, hint: TIPO_TEXTO, answer: TIPO_TEXTO, explanation: TIPO_TEXTO }),
+    },
+    commonMistakes: { type: "array", items: TIPO_TEXTO },
+    summary: { type: "array", items: TIPO_TEXTO },
+  },
+  required: ["title", "objectives", "introduction", "sections", "guidedPractice", "commonMistakes", "summary"],
+};
+
+/** Limite do pedido da estudante. Acima disso, o front avisa e NAO corta. */
+export const CUSTOM_REQUEST_MAX = 2000;
+
 Deno.serve(async (req) => {
   const options = handleOptions(req);
   if (options) return options;
@@ -123,6 +179,184 @@ Deno.serve(async (req) => {
     input = await req.json();
   } catch {
     return json({ error: "invalid_body" }, 400, req);
+  }
+/**
+ * ============================================================
+ * FASE D — gera a aula a partir do pedido em linguagem natural.
+ * ============================================================
+ *
+ * Reaproveita buildCustomLessonPrompt, o MESMO validateLesson (com
+ * mathCheck e textCheck dentro) e o MESMO saveLesson. O que muda e a
+ * credencial e o provider.
+ *
+ * Teto de tentativas: 1 geracao + 1 correcao + ate 2 tentativas de
+ * provider quando o erro e transitorio. Nao ha laco infinito: toda
+ * volta esta contada.
+ */
+const CUSTOM_MODEL = "openai/gpt-oss-120b";
+const CUSTOM_MAX_TOKENS = 8192;
+const CUSTOM_TENTATIVAS_TRANSIENT = 2;
+const CUSTOM_TEMPO_MAXIMO_MS = 120000;
+const dormir = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const TRANSITORIO = new Set(["timeout", "rede", "provider", "quota_minuto", "json", "vazio"]);
+
+function mensagemDeFalha(kind) {
+  if (kind === "quota_diaria") {
+    return "O limite diario de uso da IA acabou. Tente de novo mais tarde - seu pedido foi preservado.";
+  }
+  if (kind === "quota_minuto") {
+    return "Muitas aulas seguidas. Espera um pouquinho e tenta de novo - seu pedido foi preservado.";
+  }
+  if (kind === "timeout") {
+    return "A IA demorou demais. Tenta de novo - seu pedido foi preservado.";
+  }
+  if (kind === "credencial") {
+    return "A aula personalizada esta indisponivel agora. Tente mais tarde.";
+  }
+  return "Nao consegui gerar sua aula agora. Tenta de novo - seu pedido foi preservado.";
+}
+
+async function gerarAulaPersonalizada(input, auth, req) {
+  const request = String(input?.request ?? "").trim();
+  if (!request) {
+    return json({ error: "request_required", message: "Escreva o que voce quer aprender." }, 400, req);
+  }
+  if (request.length > CUSTOM_REQUEST_MAX) {
+    // NUNCA corta em silencio: devolve o tamanho e o limite.
+    return json({
+      error: "request_too_long",
+      message: `Seu pedido tem ${request.length} caracteres e o limite e ${CUSTOM_REQUEST_MAX}. Encurte um pouco - nada foi enviado.`,
+      limit: CUSTOM_REQUEST_MAX,
+      received: request.length,
+    }, 400, req);
+  }
+
+  const apiKey = Deno.env.get("GROQ_CUSTOM_LESSON_API_KEY") ?? "";
+  if (!apiKey) {
+    return json({
+      error: "custom_ai_not_configured",
+      message: "A aula personalizada ainda nao esta disponivel. Seu pedido foi preservado.",
+    }, 503, req);
+  }
+
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
+  const db = createDb({ url, anonKey, token: auth.token });
+
+  const { system, user } = buildCustomLessonPrompt({
+    request,
+    subject: input?.subject ?? "",
+    topic: input?.topic ?? "",
+    level: input?.level ?? "",
+    difficulty: input?.difficulty ?? "",
+    style: input?.style ?? "",
+  });
+
+  const started = Date.now();
+  let bruto = null;
+  let ultimoErro = null;
+  let tentativas = 0;
+
+  for (let t = 0; t <= CUSTOM_TENTATIVAS_TRANSIENT; t += 1) {
+    if (Date.now() - started > CUSTOM_TEMPO_MAXIMO_MS && bruto === null) {
+      ultimoErro = { kind: "timeout" };
+      break;
+    }
+    tentativas = t + 1;
+    const r = await gerarConteudoEstruturado({
+      apiKey, model: CUSTOM_MODEL, system, user, schema: LESSON_SCHEMA_OPENAI, maxTokens: CUSTOM_MAX_TOKENS,
+    });
+    if (r.ok) { bruto = r.data; break; }
+    ultimoErro = r;
+    log("custom_ai_error", { kind: r.kind, status: r.status, tentativa: t + 1 });
+    if (!TRANSITORIO.has(r.kind) || t === CUSTOM_TENTATIVAS_TRANSIENT) break;
+    await dormir(1500 * (t + 1));
+  }
+
+  if (!bruto) {
+    const kind = ultimoErro?.kind ?? "http";
+    return json({
+      error: "custom_ai_unavailable", kind,
+      message: mensagemDeFalha(kind),
+      ms: Date.now() - started,
+    }, 502, req);
+  }
+  // Mesma validacao das aulas do cronograma. Sem excecao: nem o
+  // mathCheck nem o textCheck nem nenhum limite foram afrouxados.
+  let validation = validateLesson(bruto, { subject: "", topic: "" });
+
+  if (!validation.ok) {
+    log("custom_validation_retry", { reason: validation.errors.slice(0, 3).join(" | ").slice(0, 200) });
+    const correcao = [
+      user, "",
+      "SUA RESPOSTA ANTERIOR FOI REJEITADA. Corrija exatamente estes pontos e devolva o JSON inteiro de novo:",
+      validation.errors.slice(0, 16).map((e) => `- ${e}`).join("\n"),
+    ].join("\n");
+    const segunda = await gerarConteudoEstruturado({
+      apiKey, model: CUSTOM_MODEL, system, user: correcao, schema: LESSON_SCHEMA_OPENAI, maxTokens: CUSTOM_MAX_TOKENS,
+    });
+    if (segunda.ok) validation = validateLesson(segunda.data, { subject: "", topic: "" });
+  }
+
+  if (!validation.ok) {
+    return json({
+      error: "custom_invalid_output", kind: "validation",
+      message: "A IA montou a aula fora do formato. Nada foi salvo - tenta de novo.",
+      errors: validation.errors.slice(0, 12),
+      ms: Date.now() - started,
+    }, 502, req);
+  }
+
+  const aula = validation.data;
+  const titulo = String(aula.title ?? "Aula personalizada").trim();
+  const materia = String(input?.subject ?? "").trim() || "Personalizada";
+  const topico = String(input?.topic ?? "").trim() || titulo;
+
+  // cache_key com prefixo "custom:": nao colide com o cache do
+  // cronograma, que comeca pela versao do curriculo.
+  const cacheKey = `custom:${crypto.randomUUID()}`;
+
+  let saved = null;
+  try {
+    saved = await db.saveLesson({
+      userId: auth.userId, cacheKey, curriculumVersion: "custom-v1",
+      week: null, day: null, dateKey: null,
+      subject: materia, topic: topico, lessonData: aula, model: CUSTOM_MODEL,
+      kind: "custom",
+      customPrompt: request,
+      customSubject: String(input?.subject ?? "").trim() || null,
+      customLevel: String(input?.level ?? "").trim() || null,
+      customStyle: String(input?.style ?? "").trim() || null,
+    });
+  } catch (error) {
+    log("custom_save_failed", { error_type: String(error?.message ?? error).slice(0, 80) });
+  }
+
+  log("custom_lesson_created", {
+    model: CUSTOM_MODEL, ms: Date.now() - started, tentativas, saved: Boolean(saved?.id),
+  });
+
+  return json({
+    lesson: saved?.lesson_data ?? aula,
+    id: saved?.id ?? null,
+    kind: "custom",
+    saveFailed: !saved?.id,
+    model: CUSTOM_MODEL,
+    ms: Date.now() - started,
+  }, 200, req);
+}
+
+
+  // ============================================================
+  // FASE D — AULA PERSONALIZADA
+  // ============================================================
+  // Ramo separado e explicito, antes de qualquer coisa do
+  // cronograma. A chave de conteudo e a DA FASE D, lida aqui e em
+  // lugar nenhum mais: GROQ_CONTENT_API_KEY e GROQ_API_KEY (Tutor)
+  // nao sao tocados neste caminho, e este caminho nao os le.
+  if (input?.custom === true) {
+    return gerarAulaPersonalizada(input, auth, req);
   }
 
   const subject = String(input?.subject ?? "").trim();

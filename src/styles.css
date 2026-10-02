@@ -1798,3 +1798,210 @@ h1, h2, h3, h4, p {
   background: #0b3d2e; border-radius: 8px; white-space: pre-wrap;
   word-break: break-all; font-size: 11px; line-height: 1.5; color: #a7f3d0;
 }
+
+/* ============================================================
+   FASE D — MINHAS AULAS
+   ============================================================
+   Estilos novos, reaproveitando as variaveis do tema que o resto
+   da interface ja usa. O componente nao traz cor fixa: se o tema
+   escuro da aluna mudar, esta tela acompanha.
+   ============================================================ */
+
+.custom-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.custom-head h2 {
+  margin: 12px 0 6px;
+}
+
+.custom-sub,
+.custom-hint {
+  color: var(--muted, #7a7a86);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 4px 0;
+}
+
+.custom-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e7e2ec);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.custom-form label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.custom-form textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 120px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e7e2ec);
+  background: var(--bg, #fff);
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.custom-form textarea:focus,
+.custom-form select:focus {
+  outline: 2px solid var(--accent, #c98ab5);
+  outline-offset: 1px;
+}
+
+.custom-counter {
+  align-self: flex-end;
+  font-size: 0.8rem;
+  color: var(--muted, #7a7a86);
+}
+
+.custom-counter.over {
+  color: #b4453a;
+  font-weight: 600;
+}
+
+.custom-opcionais summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--muted, #7a7a86);
+  padding: 4px 0;
+}
+
+.custom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.custom-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted, #7a7a86);
+}
+
+.custom-grid select {
+  padding: 9px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #e7e2ec);
+  background: var(--bg, #fff);
+  color: inherit;
+  font: inherit;
+}
+
+.custom-error {
+  color: #b4453a;
+  background: rgba(180, 69, 58, 0.08);
+  border: 1px solid rgba(180, 69, 58, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.custom-loading {
+  color: var(--muted, #7a7a86);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.custom-library h3 {
+  margin: 0 0 10px;
+}
+
+.custom-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e7e2ec);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.custom-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
+.custom-item-info strong {
+  font-size: 1rem;
+}
+
+.custom-item-meta {
+  font-size: 0.8rem;
+  color: var(--muted, #7a7a86);
+}
+
+.custom-item-prompt {
+  font-size: 0.8rem;
+  color: var(--muted, #7a7a86);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-item-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.danger-button {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #b4453a;
+  background: #b4453a;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.danger-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 560px) {
+  .custom-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .custom-item-actions {
+    justify-content: flex-end;
+  }
+}
