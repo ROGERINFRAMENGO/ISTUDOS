@@ -34,14 +34,21 @@ export class ContentError extends Error {
  * Traduz falha do provider em `kind` distinguivel. O front precisa
  * separar "a cota acabou" de "a IA errou" de "a rede caiu", porque a
  * mensagem para a aluna e diferente em cada caso.
+ *
+ * O texto do corpo e conferido ANTES do status, e isso nao e
+ * preciosismo: quando a cota por minuto estoura, a Groq responde 400
+ * (e nao 429) e explica no corpo que e limite. Classificar isso como
+ * "schema" fazia a aluna ler "nao consegui gerar" sem saber que era
+ * so para esperar alguns minutos.
  */
 function classificarErro(status, mensagem) {
   const m = String(mensagem ?? "");
-  if (/tokens per day|TPD/i.test(m)) return "quota_diaria";
-  if (/tokens per minute|TPM|output tokens per minute|OTPM/i.test(m)) return "quota_minuto";
+  if (/tokens\s*per\s*day|TPD|limit.*exceeded|rate.?limit|too many requests|TPM|OTPM/i.test(m)) {
+    return /tokens\s*per\s*day|TPD/i.test(m) ? "quota_diaria" : "quota_minuto";
+  }
   if (status === 429) return "quota_minuto";
   if (status === 401 || status === 403) return "credencial";
-  if (status === 400) return "schema";
+  if (status === 400 || status === 413) return "schema";
   if (status >= 500) return "provider";
   if (status === 0) return "rede";
   return "http";
@@ -104,12 +111,10 @@ export async function gerarConteudoEstruturado({
   if (!response.ok) {
     const mensagem = String(data?.error?.message ?? bruto ?? "");
     const kind = classificarErro(response.status, mensagem);
-    return {
-      ok: false,
-      kind,
-      detail: mensagem.slice(0, 300),
-      status: response.status,
-    };
+    // O detalhe NUNCA volta para a aluna: pode trazer nome do modelo,
+    // id de requisicao ou trecho do prompt. Fica so no log.
+    console.warn(`[groqContent] kind=${kind} status=${response.status} :: ${mensagem.slice(0, 220)}`);
+    return { ok: false, kind, detail: mensagem.slice(0, 300), status: response.status };
   }
 
   const texto = String(data?.choices?.[0]?.message?.content ?? "");

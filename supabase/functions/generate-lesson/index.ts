@@ -194,6 +194,11 @@ Deno.serve(async (req) => {
  * volta esta contada.
  */
 const CUSTOM_MODEL = "openai/gpt-oss-120b";
+// Fallback medido: o 120b passa em 20 de 26 geracoes estritas (77%) e
+// o 20b em 12 de 17 (71%). Sao amostras diferentes, entao encadear os
+// dois como o generate-lesson ja faz com os modelos NVIDIA rende
+// 77% + 23% * 71% ~= 93%. Qwen (10/17) fica fora.
+const CUSTOM_MODEL_FALLBACK = "openai/gpt-oss-20b";
 const CUSTOM_MAX_TOKENS = 8192;
 const CUSTOM_TENTATIVAS_TRANSIENT = 2;
 const CUSTOM_TEMPO_MAXIMO_MS = 120000;
@@ -254,61 +259,79 @@ async function gerarAulaPersonalizada(input, auth, req) {
   });
 
   const started = Date.now();
-  let bruto = null;
+
+  // Mesma ideia do caminho do cronograma: modelo principal, e se a
+  // aula nao passar no validador, o segundo modelo tenta. Cada modelo
+  // tem UMA geracao e UMA correcao — teto de 4 chamadas, nunca laco.
+  const cadeia = [CUSTOM_MODEL, CUSTOM_MODEL_FALLBACK];
+  let aulaValida = null;
+  let modeloUsado = CUSTOM_MODEL;
   let ultimoErro = null;
   let tentativas = 0;
+  let errosValidador = [];
 
-  for (let t = 0; t <= CUSTOM_TENTATIVAS_TRANSIENT; t += 1) {
-    if (Date.now() - started > CUSTOM_TEMPO_MAXIMO_MS && bruto === null) {
-      ultimoErro = { kind: "timeout" };
-      break;
+  for (const modelo of cadeia) {
+    // Nao comeca o segundo se ja estourou o tempo: melhor erro honesto
+    // do que estourar o gateway.
+    if (Date.now() - started > CUSTOM_TEMPO_MAXIMO_MS) { ultimoErro = { kind: "timeout" }; break; }
+    modeloUsado = modelo;
+
+    const chamar = async (userMensagem) => {
+      for (let t = 0; t <= CUSTOM_TENTATIVAS_TRANSIENT; t += 1) {
+        if (Date.now() - started > CUSTOM_TEMPO_MAXIMO_MS && t > 0) return null;
+        tentativas += 1;
+        const r = await gerarConteudoEstruturado({
+          apiKey, model: modelo, system, user: userMensagem, schema: LESSON_SCHEMA_OPENAI, maxTokens: CUSTOM_MAX_TOKENS,
+        });
+        if (r.ok) return r;
+        ultimoErro = r;
+        log("custom_ai_error", { kind: r.kind, status: r.status, tentativa: t + 1, modelo });
+        if (!TRANSITORIO.has(r.kind) || t === CUSTOM_TENTATIVAS_TRANSIENT) return null;
+        // Espera maior para cota: martelar um limite por minuto
+        // esgotado so piora. A espera cresce a cada tentativa.
+        await dormir(r.kind === "quota_minuto" ? 8000 * (t + 1) : 1500 * (t + 1));
+      }
+      return null;
+    };
+
+    const primeira = await chamar(user);
+    if (!primeira) continue;
+    // Mesma validacao das aulas do cronograma. Sem excecao: nem o
+    // mathCheck nem o textCheck nem nenhum limite foram afrouxados.
+    let validacao = validateLesson(primeira.data, { subject: "", topic: "" });
+
+    if (!validacao.ok) {
+      errosValidador = validacao.errors;
+      log("custom_validation_retry", { modelo, reason: validacao.errors.slice(0, 3).join(" | ").slice(0, 200) });
+      const correcao = [
+        user, "",
+        "SUA RESPOSTA ANTERIOR FOI REJEITADA. Corrija exatamente estes pontos e devolva o JSON inteiro de novo:",
+        validacao.errors.slice(0, 16).map((e) => `- ${e}`).join("\n"),
+      ].join("\n");
+      const segunda = await chamar(correcao);
+      if (segunda) validacao = validateLesson(segunda.data, { subject: "", topic: "" });
     }
-    tentativas = t + 1;
-    const r = await gerarConteudoEstruturado({
-      apiKey, model: CUSTOM_MODEL, system, user, schema: LESSON_SCHEMA_OPENAI, maxTokens: CUSTOM_MAX_TOKENS,
-    });
-    if (r.ok) { bruto = r.data; break; }
-    ultimoErro = r;
-    log("custom_ai_error", { kind: r.kind, status: r.status, tentativa: t + 1 });
-    if (!TRANSITORIO.has(r.kind) || t === CUSTOM_TENTATIVAS_TRANSIENT) break;
-    await dormir(1500 * (t + 1));
+
+    if (validacao.ok) { aulaValida = validacao.data; break; }
   }
 
-  if (!bruto) {
+  if (!aulaValida) {
+    // Houve resposta do modelo mas ela nao passou = validacao. Nao
+    // houve resposta = provider ou cota. Sao mensagens diferentes.
+    const eValidacao = errosValidador.length > 0;
     const kind = ultimoErro?.kind ?? "http";
     return json({
-      error: "custom_ai_unavailable", kind,
-      message: mensagemDeFalha(kind),
-      ms: Date.now() - started,
-    }, 502, req);
-  }
-  // Mesma validacao das aulas do cronograma. Sem excecao: nem o
-  // mathCheck nem o textCheck nem nenhum limite foram afrouxados.
-  let validation = validateLesson(bruto, { subject: "", topic: "" });
-
-  if (!validation.ok) {
-    log("custom_validation_retry", { reason: validation.errors.slice(0, 3).join(" | ").slice(0, 200) });
-    const correcao = [
-      user, "",
-      "SUA RESPOSTA ANTERIOR FOI REJEITADA. Corrija exatamente estes pontos e devolva o JSON inteiro de novo:",
-      validation.errors.slice(0, 16).map((e) => `- ${e}`).join("\n"),
-    ].join("\n");
-    const segunda = await gerarConteudoEstruturado({
-      apiKey, model: CUSTOM_MODEL, system, user: correcao, schema: LESSON_SCHEMA_OPENAI, maxTokens: CUSTOM_MAX_TOKENS,
-    });
-    if (segunda.ok) validation = validateLesson(segunda.data, { subject: "", topic: "" });
-  }
-
-  if (!validation.ok) {
-    return json({
-      error: "custom_invalid_output", kind: "validation",
-      message: "A IA montou a aula fora do formato. Nada foi salvo - tenta de novo.",
-      errors: validation.errors.slice(0, 12),
+      error: eValidacao ? "custom_invalid_output" : "custom_ai_unavailable",
+      kind: eValidacao ? "validation" : kind,
+      message: eValidacao
+        ? "A IA montou a aula fora do formato. Nada foi salvo - tenta de novo."
+        : mensagemDeFalha(kind),
+      errors: errosValidador.slice(0, 12),
       ms: Date.now() - started,
     }, 502, req);
   }
 
-  const aula = validation.data;
+  const aula = aulaValida;
   const titulo = String(aula.title ?? "Aula personalizada").trim();
   const materia = String(input?.subject ?? "").trim() || "Personalizada";
   const topico = String(input?.topic ?? "").trim() || titulo;
@@ -322,7 +345,7 @@ async function gerarAulaPersonalizada(input, auth, req) {
     saved = await db.saveLesson({
       userId: auth.userId, cacheKey, curriculumVersion: "custom-v1",
       week: null, day: null, dateKey: null,
-      subject: materia, topic: topico, lessonData: aula, model: CUSTOM_MODEL,
+      subject: materia, topic: topico, lessonData: aula, model: modeloUsado,
       kind: "custom",
       customPrompt: request,
       customSubject: String(input?.subject ?? "").trim() || null,
@@ -334,7 +357,7 @@ async function gerarAulaPersonalizada(input, auth, req) {
   }
 
   log("custom_lesson_created", {
-    model: CUSTOM_MODEL, ms: Date.now() - started, tentativas, saved: Boolean(saved?.id),
+    model: modeloUsado, ms: Date.now() - started, tentativas, saved: Boolean(saved?.id),
   });
 
   return json({
@@ -342,7 +365,7 @@ async function gerarAulaPersonalizada(input, auth, req) {
     id: saved?.id ?? null,
     kind: "custom",
     saveFailed: !saved?.id,
-    model: CUSTOM_MODEL,
+    model: modeloUsado,
     ms: Date.now() - started,
   }, 200, req);
 }

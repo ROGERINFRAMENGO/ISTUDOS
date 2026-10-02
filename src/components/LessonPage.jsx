@@ -319,7 +319,9 @@ function GeneratedStudy(props) {
       <section className="panel lesson-hero">
         <div className="lesson-hero-copy">
           <span className="tag" style={{ background: `${lesson.color || '#a377ff'}1a`, color: lesson.color || '#a377ff' }}>
-            Aula do cronograma · {lesson.duration} min · feita pela IA para voce
+            {lesson.isCustom
+              ? `Aula personalizada · ${lesson.duration} min · criada pela IA para voce`
+              : `Aula do cronograma · ${lesson.duration} min · feita pela IA para voce`}
           </span>
           {/*
             A introduction e um PARAGRAFO (o gancho da aula), nao um

@@ -624,7 +624,16 @@ function App() {
   // funcionarem sem nenhum renderer novo.
   const generatedStudyLesson = useMemo(() => {
     if (customLesson?.lesson) {
-      return { ...customLessonShape(customLesson.lesson), generated: true, lessonId: customLesson.id ?? null };
+      // O CONTEUDO da aula vem primeiro. Sem o spread, o
+      // customLessonShape devolvia so os rotulos e o getLessonDetail
+      // caia no modelo estatico generico — a aluna lia um texto que
+      // nao tinha nada a ver com o que ela pediu.
+      return {
+        ...customLesson.lesson,
+        ...customLessonShape(customLesson.lesson),
+        generated: true,
+        lessonId: customLesson.id ?? null,
+      };
     }
     const base = currentStudyLesson;
     if (!base?.plan || !aiLesson?.lesson) return base;
