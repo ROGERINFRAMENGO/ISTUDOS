@@ -2012,6 +2012,21 @@ h1, h2, h3, h4, p {
 }
 
 @media (max-width: 560px) {
+  .custom-page,
+  .custom-form,
+  .custom-form textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .custom-page {
+    width: 100%;
+  }
+
+  .custom-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .custom-item {
     flex-direction: column;
     align-items: stretch;
