@@ -155,14 +155,13 @@ function responder(req, status, corpo) {
 // cada chamada custa uma query leve e acontece 4x por hora -- nao ha
 // o que ganhar memoizando.
 async function lerSegredo(): Promise<string> {
-  const { data } = await postgrest<{ cron_secret: string } | { cron_secret: string }[]>(
+  const data = await postgrest<string | { cron_secret: string } | { cron_secret: string }[]>(
     'rpc/cron_secret',
-    { method: 'POST', body: {} },
+    { method: 'POST', body: JSON.stringify({}) },
   );
-  // O PostgREST devolve a linha como objeto solto quando a funcao
-  // retorna escalar, e como array quando retorna setof. Sem esta
-  // normalizacao, ler `data.cron_secret` de um array daria '' e o job
-  // recusaria ate a chamada legitima do cron.
+  if (typeof data === "string") return data;
+    // A RPC retorna texto escalar; a forma objeto/array permanece aceita
+    // para compatibilidade caso o contrato da funcao mude para setof.
   const linha = Array.isArray(data) ? data[0] : data;
   return linha?.cron_secret ?? '';
 }
@@ -177,15 +176,26 @@ async function autorizado(req: Request): Promise<boolean> {
     log("segredo_indisponivel", { erro: String((erro as Error)?.message ?? erro).slice(0, 80) });
     return false;
   }
-  if (!segredo) return false;
+    if (!segredo) {
+      log("credencial_rejeitada", { motivo: "vault_vazio" });
+      return false;
+    }
 
   const recebido = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!recebido || recebido.length !== segredo.length) return false;
+    if (!recebido) {
+      log("credencial_rejeitada", { motivo: "header_ausente" });
+      return false;
+    }
+    if (recebido.length !== segredo.length) {
+      log("credencial_rejeitada", { motivo: "tamanho_divergente" });
+      return false;
+    }
 
   // Comparacao de tempo constante: sem isso, da para adivinhar o
   // segredo medindo quanto tempo a funcao leva para recusar.
   let diff = 0;
   for (let i = 0; i < segredo.length; i += 1) diff |= segredo.charCodeAt(i) ^ recebido.charCodeAt(i);
+  if (diff !== 0) log("credencial_rejeitada", { motivo: "valor_divergente" });
   return diff === 0;
 }
 
@@ -220,7 +230,9 @@ async function postgrest<T>(caminho: string, init: RequestInit = {}): Promise<T>
   }
   if (!resposta.ok) {
     // Guarda so o status: a mensagem do PostgREST pode echoing de valor.
-    throw new Error(`postgrest_${resposta.status}`);
+    const codigo = (corpo as { code?: unknown } | null)?.code;
+    const seguro = typeof codigo === "string" && /^[A-Z0-9]+$/.test(codigo) ? `_${codigo}` : "";
+    throw new Error(`postgrest_${resposta.status}${seguro}`);
   }
   return corpo as T;
 }
