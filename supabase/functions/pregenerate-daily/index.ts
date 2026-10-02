@@ -134,45 +134,46 @@ function responder(req, status, corpo) {
 // ---------------------------------------------------------------
 // O SEGREDO VEM DO VAULT, e nao do ambiente
 //
-// O CRON_SECRET tem UM lugar so: o Vault. A funcao le a la, na
-// chamada, pela RPC `cron_secret`, que so responde para service_role.
+// O CRON_SECRET tem UM lugar so: o Vault. A funcao le a la pela RPC
+// `cron_secret`, que so responde para service_role.
 //
 // Por que nao Deno.env: com o valor nos dois lados, cada rotacao
 // exigia copiar a credencial de um lugar para o outro -- e foi
 // exatamente numa copia dessas que o valor apareceu no output de uma
 // sessao anterior. Agora ele nasce no Vault e nao e transmitido.
 //
-// A leitura e memorizada no cold start da instancia. O segredo muda
-// por rotacao, nao por requisicao, entao reler a cada chamada seria
-// desperdicio sem ganho nenhum.
-// ---------------------------------------------------------------
-let segredoMemo: string | null = null;
-
+// SEM MEMORIZACAO -- e isso e uma correcao, nao uma escolha.
+//
+// A versao anterior guardava o segredo em memoria no cold start da
+// instancia. Ela funcionou... ate o dia em que o segredo foi rotacionado:
+// as instancias ja vivas continuavam com o valor antigo e passavam a
+// recusar o cron legitimo, que ja mandava o valor novo. O sintoma era
+// um 401 sem causa aparente, com Vault e cron usando a mesma senha.
+//
+// Uma credencial memorizada dentro de um processo de vida longa e uma
+// janela de falha garantida em cada rotacao. Ler uma linha do Vault a
+// cada chamada custa uma query leve e acontece 4x por hora -- nao ha
+// o que ganhar memoizando.
 async function lerSegredo(): Promise<string> {
-  if (segredoMemo) return segredoMemo;
   const { data } = await postgrest<{ cron_secret: string } | { cron_secret: string }[]>(
     'rpc/cron_secret',
     { method: 'POST', body: {} },
   );
   // O PostgREST devolve a linha como objeto solto quando a funcao
   // retorna escalar, e como array quando retorna setof. Sem esta
-  // normalizacao, ler `data.cron_secret` de um array daria undefined e
-  // o job recusaria toda chamada, inclusive a legitima do cron.
+  // normalizacao, ler `data.cron_secret` de um array daria '' e o job
+  // recusaria ate a chamada legitima do cron.
   const linha = Array.isArray(data) ? data[0] : data;
-  segredoMemo = linha?.cron_secret ?? '';
-  return segredoMemo;
+  return linha?.cron_secret ?? '';
 }
 
 async function autorizado(req: Request): Promise<boolean> {
-  // Falha ao ler o segredo e "nao autorizado", nunca 500: um erro de
-  // infraestrutura aqui viraria 500 e o cron registraria falha em vez
-  // de "chamada recusada", escondendo a causa real.
+  // Falha ao ler o segredo e 'nao autorizado', nunca 500: um erro de
+  // infraestrutura viraria 'erro interno' e esconderia a causa real.
   let segredo = '';
   try {
     segredo = await lerSegredo();
   } catch (erro) {
-    // Falha ao ler o segredo e "nao autorizado", nunca 500: um erro de
-    // infraestrutura viraria "erro interno" e esconderia a causa.
     log("segredo_indisponivel", { erro: String((erro as Error)?.message ?? erro).slice(0, 80) });
     return false;
   }
