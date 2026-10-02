@@ -70,28 +70,46 @@ export async function gerarConteudoEstruturado({
   temperature = 0.55,
   reasoning = "low",
   timeoutMs = 150000,
+  fallbackJsonObject = false,
 }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let response;
+  let bruto;
+  let data;
   try {
-    response = await fetch(`${GROQ_BASE}/chat/completions`, {
+    const payload = {
+      model,
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      temperature,
+      max_tokens: maxTokens,
+      ...(reasoning ? { reasoning_effort: reasoning } : {}),
+      stream: false,
+    };
+    const chamar = (responseFormat) => fetch(`${GROQ_BASE}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "system", content: system }, { role: "user", content: user }],
-        temperature,
-        max_tokens: maxTokens,
-        ...(reasoning ? { reasoning_effort: reasoning } : {}),
-        stream: false,
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: "aula", strict: true, schema },
-        },
-      }),
+      body: JSON.stringify({ ...payload, response_format: responseFormat }),
       signal: controller.signal,
     });
+
+    response = await chamar({
+      type: "json_schema",
+      json_schema: { name: "aula", strict: true, schema },
+    });
+    bruto = await response.text();
+    try { data = JSON.parse(bruto); } catch { data = null; }
+
+    const mensagem = String(data?.error?.message ?? bruto ?? "");
+    if (
+      fallbackJsonObject &&
+      response.status === 400 &&
+      /(?:Failed to generate JSON|Generated JSON does not match the expected schema)/i.test(mensagem)
+    ) {
+      response = await chamar({ type: "json_object" });
+      bruto = await response.text();
+      try { data = JSON.parse(bruto); } catch { data = null; }
+    }
   } catch (error) {
     clearTimeout(timer);
     const cancelado = error?.name === "AbortError";
@@ -103,10 +121,6 @@ export async function gerarConteudoEstruturado({
     };
   }
   clearTimeout(timer);
-
-  const bruto = await response.text();
-  let data = null;
-  try { data = JSON.parse(bruto); } catch { /* resposta nao-JSON */ }
 
   if (!response.ok) {
     const mensagem = String(data?.error?.message ?? bruto ?? "");

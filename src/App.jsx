@@ -944,6 +944,7 @@ function App() {
       await syncCompletedLessons(activeUser.id, [...completedLessonIds, currentStudyLesson.id]);
     } else {
       // Modo offline: mantém XP/sequência localmente até o login.
+      const totalLessons = await countTotalLessons();
       setStudentState((prev) => {
         const merged = [...new Set([...studyDates, today])];
         const streak = computeStreak(merged, today);

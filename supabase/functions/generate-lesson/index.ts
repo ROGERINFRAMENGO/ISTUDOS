@@ -232,6 +232,12 @@ const CUSTOM_TENTATIVAS_TRANSIENT = 2;
 const CUSTOM_TEMPO_MAXIMO_MS = 120000;
 const dormir = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function tempoEsperaQuota(detail, tentativa) {
+  const espera = String(detail ?? "").match(/try again in\s+([\d.]+)\s*s/i);
+  if (!espera) return 8000 * (tentativa + 1);
+  return Math.min(60000, Math.ceil(Number(espera[1]) * 1000) + 1000);
+}
+
 const TRANSITORIO = new Set(["timeout", "rede", "provider", "quota_minuto", "json", "vazio"]);
 
 function mensagemDeFalha(kind) {
@@ -310,6 +316,7 @@ async function gerarAulaPersonalizada(input, auth, req) {
         tentativas += 1;
         const r = await gerarConteudoEstruturado({
           apiKey, model: modelo, system, user: userMensagem, schema: LESSON_SCHEMA_OPENAI, maxTokens: CUSTOM_MAX_TOKENS,
+          fallbackJsonObject: true,
         });
         if (r.ok) return r;
         ultimoErro = r;
@@ -317,7 +324,7 @@ async function gerarAulaPersonalizada(input, auth, req) {
         if (!TRANSITORIO.has(r.kind) || t === CUSTOM_TENTATIVAS_TRANSIENT) return null;
         // Espera maior para cota: martelar um limite por minuto
         // esgotado so piora. A espera cresce a cada tentativa.
-        await dormir(r.kind === "quota_minuto" ? 8000 * (t + 1) : 1500 * (t + 1));
+        await dormir(r.kind === "quota_minuto" ? tempoEsperaQuota(r.detail, t) : 1500 * (t + 1));
       }
       return null;
     };
@@ -331,9 +338,13 @@ async function gerarAulaPersonalizada(input, auth, req) {
     if (!validacao.ok) {
       errosValidador = validacao.errors;
       log("custom_validation_retry", { modelo, reason: validacao.errors.slice(0, 3).join(" | ").slice(0, 200) });
+      const ehErroMatematica = validacao.errors.some((e) => /a conta\s+\"|vale\s+[0-9]|resultado.*explicacao|resposta.*explicacao/i.test(e));
       const correcao = [
-        user, "",
-        "SUA RESPOSTA ANTERIOR FOI REJEITADA. Corrija exatamente estes pontos e devolva o JSON inteiro de novo:",
+        user,
+        "",
+        ehErroMatematica
+          ? "SUA RESPOSTA ANTERIOR FOI REJEITADA POR ERRO DE CONTA OU COERENCIA MATEMATICA. Refaça TODAS as contas do texto, aplique a regra correta e devolva o JSON inteiro com exemplos e exercicios coerentes. Nao invente resultado. Veja estes erros e corrija cada um antes de responder:"
+          : "SUA RESPOSTA ANTERIOR FOI REJEITADA. Corrija exatamente estes pontos e devolva o JSON inteiro de novo:",
         validacao.errors.slice(0, 16).map((e) => `- ${e}`).join("\n"),
       ].join("\n");
       const segunda = await chamar(correcao);

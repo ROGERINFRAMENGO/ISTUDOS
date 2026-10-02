@@ -10,7 +10,7 @@
 //
 // Fallback: se a tabela nao existir/falhar, usamos o Map em memoria e
 // logamos, para o chat continuar funcionando em vez de cair.
-import { TUTOR_RATE_LIMIT_MAX, TUTOR_RATE_LIMIT_WINDOW_MS } from "./_ai_config.js";
+import { TUTOR_RATE_LIMIT_MAX, TUTOR_RATE_LIMIT_WINDOW_MS } from "./ai_config.js";
 
 /** userId -> timestamps (ms). So e usado se o Postgres falhar. */
 const janela = new Map();
