@@ -1015,6 +1015,20 @@ function App() {
     }
     setQuizError('');
 
+  // FASE D: a aula personalizada NUNCA pode usar o plano do cronograma.
+  // O loadQuizForLesson abre pelo cache local do plano, e o plano do
+  // cronograma ja tinha quiz salvo de uma aula de Ciencias: a aluna
+  // clicava em "questionario" na aula do ceu azul e recebia um quiz
+  // de atomos. Aqui o plano e a propria aula, com chave propria, e o
+  // acerto so acontece na aula certa.
+  const planDoQuiz = isCustomLessonOpen
+    ? {
+        id: `custom:${generatedStudyLesson.lessonId ?? generatedStudyLesson.title ?? 'aula'}`,
+        subject: generatedStudyLesson.subject,
+        topic: generatedStudyLesson.topic,
+      }
+    : openPlan;
+
   // Quiz ainda NAO pronto: a aluna clicou, geramos agora e abrimos.
   // O botao nunca dependeu do quiz existir, entao este caminho sempre
   // acaba em quiz aberto ou em erro com "Tentar novamente".
@@ -1028,7 +1042,7 @@ function App() {
     setQuizError('');
     setAiStatus('Preparando questionario...');
     try {
-      const result = await loadQuizForLesson(openPlan, generatedStudyLesson.lessonId, {
+      const result = await loadQuizForLesson(planDoQuiz, generatedStudyLesson.lessonId, {
         lesson: generatedStudyLesson,
       });
       setAiQuiz(result.quiz);
