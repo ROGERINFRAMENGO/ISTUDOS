@@ -2005,3 +2005,351 @@ h1, h2, h3, h4, p {
     justify-content: flex-end;
   }
 }
+/* ============================================================
+   FINAL POLISH — SISTEMA DE DESIGN
+   ------------------------------------------------------------
+   Tokens em um lugar so. As regras antigas continuam valendo
+   (nenhuma foi removida), mas tudo que for novo usa estas
+   variaveis — assim os sete temas mudam de cor sem que cada
+   componente precise saber quais existem.
+   ============================================================ */
+
+:root {
+  --brand:        #7c5cff;
+  --brand-strong: #6a46f0;
+  --brand-soft:   #f1ecff;
+  --accent:       #e879a8;
+  --accent-soft:  #fdeef4;
+
+  --bg:        #faf8fc;
+  --surface:   #ffffff;
+  --surface-2: #f6f3fa;
+
+  --text:       #241f2e;
+  --text-muted: #6d6780;
+  --line:       #e8e3f0;
+
+  --ok: #1f9d6b;       --ok-soft: #e6f7f0;
+  --warn: #b7791f;     --warn-soft: #fdf3e2;
+  --danger: #d2453d;   --danger-soft: #fdecea;
+
+  --r-sm: 8px;  --r-md: 12px;  --r-lg: 16px;  --r-xl: 22px;  --r-pill: 999px;
+
+  --sp-1: 4px;  --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 22px; --sp-6: 30px;  --sp-7: 42px;
+
+  --sh-1: 0 1px 2px rgba(36, 31, 46, 0.05);
+  --sh-2: 0 4px 14px rgba(36, 31, 46, 0.07);
+  --sh-3: 0 12px 32px rgba(36, 31, 46, 0.10);
+
+  --t-fast: 120ms ease;
+  --t-base: 200ms ease;
+
+  --font: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --measure: 68ch;
+}
+
+/* Foco visivel e consistente. Antes cada componente fazia o seu,
+   e metade dos botoes nao tinha nenhum. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Superficie unica: evita "card dentro de card" amontoado. */
+.pl-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+  padding: var(--sp-5);
+}
+
+.pl-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-2);
+}
+
+.pl-muted { color: var(--text-muted); }
+
+/* Botao principal: um formato unico para toda acao de_submit. */
+.pl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.pl-btn-primary { background: var(--brand); color: #fff; }
+.pl-btn-primary:hover:not(:disabled) { background: var(--brand-strong); }
+.pl-btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line);
+}
+.pl-btn-secondary:hover:not(:disabled) { background: var(--surface-2); border-color: var(--brand); }
+.pl-btn-danger { background: var(--danger); color: #fff; }
+.pl-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ============================================================
+   FINAL POLISH — SIMULADOS
+   ------------------------------------------------------------
+   A area de simulados era um formulario dentro de um painel. Agora
+   ela tem tres estados com nomes proprios — lista, prova e resultado
+   — e cada um tem layout para si. Nenhuma regra antiga foi
+   removida: estas vem por ultimo e sobrescrevem onde precisa.
+   ============================================================ */
+
+.sim-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.sim-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.sim-head h2 { margin: 0; font-size: 1.6rem; letter-spacing: -0.01em; }
+.sim-head p { margin: 0; color: var(--text-muted); font-size: 0.95rem; line-height: 1.55; }
+
+/* --- formulario de criacao ---------------------------------- */
+.sim-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+.sim-form .sim-field-full { grid-column: 1 / -1; }
+
+.sim-field { display: flex; flex-direction: column; gap: var(--sp-2); }
+.sim-field > span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+.sim-field select,
+.sim-field input {
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  width: 100%;
+}
+.sim-field select:focus,
+.sim-field input:focus { border-color: var(--brand); }
+
+.sim-note {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  margin: 0;
+}
+.sim-note strong { color: var(--text); }
+
+/* --- lista de simulados ------------------------------------ */
+.sim-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.sim-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-3);
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  box-shadow: var(--sh-1);
+}
+
+.sim-item-title { font-size: 1.02rem; font-weight: 650; margin: 0 0 var(--sp-1); }
+
+/* Metadados em pilha: numa unica linha eles estouravam no celular. */
+.sim-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.sim-chip {
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.sim-chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+
+.sim-item-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: flex-end; }
+
+.sim-empty {
+  text-align: center;
+  padding: var(--sp-6) var(--sp-4);
+  color: var(--text-muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+
+/* --- tela da prova ----------------------------------------- */
+.sim-quiz { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.sim-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.sim-progress-head strong { color: var(--text); font-size: 1.05rem; }
+
+.sim-progress {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.sim-progress > i {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  border-radius: var(--r-pill);
+  transition: width var(--t-base);
+}
+
+.sim-question {
+  font-size: 1.18rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.sim-topic {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.sim-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* Area clicavel grande: 56px de altura, o alvo minimo confortavel
+   para dedo. Antes a alternativa era uma linha de texto com
+   padding fino e era dificil de acertar no celular. */
+.sim-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.sim-option:hover:not(:disabled) { border-color: var(--brand); }
+.sim-option[aria-pressed="true"] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  font-weight: 600;
+}
+.sim-option:disabled { cursor: default; }
+
+.sim-option-key {
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.sim-option[aria-pressed="true"] .sim-option-key {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+
+.sim-nav {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: space-between;
+  padding-top: var(--sp-2);
+}
+
+/* --- resultado --------------------------------------------- */
+.sim-result { text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
+.sim-result-score { font-size: 3.2rem; font-weight: 750; line-height: 1; letter-spacing: -0.02em; }
+.sim-result-score.ok { color: var(--ok); }
+.sim-result-score.mid { color: var(--warn); }
+.sim-result-score.low { color: var(--danger); }
+.sim-result-total { color: var(--text-muted); font-size: 0.95rem; }
+
+.sim-review { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.sim-review-item {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  background: var(--surface);
+  text-align: left;
+}
+.sim-review-item.ok { border-left-color: var(--ok); }
+.sim-review-item.no { border-left-color: var(--danger); }
+.sim-review-q { font-weight: 600; margin: 0 0 var(--sp-2); line-height: 1.45; }
+.sim-review-line { font-size: 0.88rem; margin: 2px 0; color: var(--text-muted); }
+.sim-review-line b { color: var(--text); }
+
+/* --- responsivo -------------------------------------------- */
+@media (max-width: 640px) {
+  .sim-page { padding: var(--sp-4) var(--sp-3) var(--sp-6); gap: var(--sp-4); }
+  .sim-form { grid-template-columns: 1fr; }
+  .sim-item { grid-template-columns: 1fr; }
+  .sim-item-actions { justify-content: stretch; }
+  .sim-item-actions .pl-btn { flex: 1 1 auto; }
+  .sim-question { font-size: 1.06rem; }
+  .sim-result-score { font-size: 2.6rem; }
+  .sim-nav { position: sticky; bottom: 0; background: var(--bg); padding: var(--sp-3) 0; }
+}

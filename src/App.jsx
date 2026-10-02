@@ -41,7 +41,8 @@ import { getFullLessonQuiz } from './data/lessonQuiz';
 import CustomLessonsPage from './components/CustomLessonsPage';
 import { THEMES, applyTheme, loadTheme } from './data/themes';
 import { scheduleWeeks } from './data/schedule';
-import { getPlanDayById, isGeneratedDay, planDayToLesson, planLessonsForDate, totalGeneratedBlocks } from './data/curriculum';
+import { getPlanDayById, isGeneratedDay, planDayToLesson, planLessonsForDate, totalGeneratedBlocks, curriculumDays } from './data/curriculum';
+import { computeStreak, officialProgress, accuracyPercent } from './services/metrics';
 import {
   AI_MESSAGES,
   getCachedLesson,
@@ -128,6 +129,18 @@ function loadTodayDoneCount() {
   }
 }
 
+// dateKeyLocal local, equivalente a de metrics.js. Fica aqui porque
+// ja era usada por varias partes do arquivo; o metrics.js exporta a
+// sua propria copia para os testes, e as duas produzem o mesmo
+// resultado para a mesma data (meio-dia local, sem UTC).
+// dateKeyLocal local, equivalente a de metrics.js. Fica aqui porque
+// ja era usada por varias partes do arquivo; o metrics.js exporta a
+// sua propria copia para os testes, e as duas produzem o mesmo
+// resultado para a mesma data (meio-dia local, sem UTC).
+// dateKeyLocal local, equivalente a de metrics.js. Fica aqui porque
+// ja era usada por varias partes do arquivo; o metrics.js exporta a
+// sua propria copia para os testes, e as duas produzem o mesmo
+// resultado para a mesma data (meio-dia local, sem UTC).
 function dateKeyLocal(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -152,30 +165,17 @@ function formatStudyTime(totalSeconds) {
   return mm ? `${h}h ${mm}min` : `${h}h`;
 }
 
-// Sequencia estilo Duolingo: dias consecutivos com licao concluida.
-// Se pular 1 dia (ontem sem licao e hoje sem licao ainda), quebra e volta a 0.
-function calcStreak(dateKeys, todayKey) {
-  const set = new Set(dateKeys || []);
-  if (!set.size) return 0;
-  let cursor = todayKey;
-  // Se hoje ainda nao tem licao, a sequencia viva conta a partir de ontem.
-  if (!set.has(cursor)) {
-    const y = new Date(`${cursor}T12:00:00`);
-    y.setDate(y.getDate() - 1);
-    const yesterday = dateKeyLocal(y);
-    if (!set.has(yesterday)) return 0;
-    cursor = yesterday;
-  }
-  let streak = 0;
-  let c = cursor;
-  while (set.has(c)) {
-    streak += 1;
-    const d = new Date(`${c}T12:00:00`);
-    d.setDate(d.getDate() - 1);
-    c = dateKeyLocal(d);
-  }
-  return streak;
-}
+// FINAL POLISH: os IDs oficiais saem do CURRICULO, nao de um arquivo
+// de modelo antigo. Uma "aula personalizada" (prefixo custom:) e um
+// simulado nao entram nesta lista e, portanto, nunca entram no
+// denominador nem no numerador do progresso.
+const OFFICIAL_LESSON_IDS = curriculumDays
+  .filter((d) => d.kind === 'lesson' || d.kind === 'review')
+  .map((d) => d.id);
+
+// A sequencia agora vem de metrics.js: uma unica funcao para a tela e
+// para a regra de negocio. Enquanto as duas copias existissem, a
+// interface podia mostrar um numero que o dado nao sustentava.
 
 function weekDaysFromToday(todayKey) {
   const out = [];
@@ -383,7 +383,7 @@ function App() {
         name: hydrated.name || studentProfile.name,
         study_seconds: totalSeconds,
         study_minutes: totalSeconds > 0 ? Math.max(1, Math.ceil(totalSeconds / 60)) : (hydrated.study_minutes || 0),
-        overall_progress: totalLessons > 0 ? Math.min(100, Math.round(((hydrated.lessons_completed || 0) / totalLessons) * 100)) : (hydrated.overall_progress || 0),
+        overall_progress: totalLessons > 0 ? Math.min(100, Math.round(((hydrated.lessons_completed || 0) / totalLessons) * 100)) : 0,
       });
     };
 
@@ -419,7 +419,7 @@ function App() {
         name: hydratedNext.name || studentProfile.name,
         study_seconds: totalSecondsNext,
         study_minutes: totalSecondsNext > 0 ? Math.max(1, Math.ceil(totalSecondsNext / 60)) : (hydratedNext.study_minutes || 0),
-        overall_progress: totalLessonsNext > 0 ? Math.min(100, Math.round(((hydratedNext.lessons_completed || 0) / totalLessonsNext) * 100)) : (hydratedNext.overall_progress || 0),
+        overall_progress: totalLessonsNext > 0 ? Math.min(100, Math.round(((hydratedNext.lessons_completed || 0) / totalLessonsNext) * 100)) : 0,
       });
     });
 
@@ -915,9 +915,16 @@ function App() {
         name: hydrated.name || studentProfile.name,
         study_seconds: realSecondsTotal,
         study_minutes: Math.max(1, Math.ceil(realSecondsTotal / 60)),
-        overall_progress: totalLessons > 0 ? Math.min(100, Math.round(((progress.lessons_completed || 0) / totalLessons) * 100)) : (progress.overall_progress || 0),
-        // Sequência local (Duolingo) tem prioridade: quebra se pular dia.
-        current_streak: calcStreak([...new Set([...studyDates, today])], today) || progress.current_streak || prevLocal.current_streak,
+        // FINAL POLISH: calculado a partir dos IDs oficiais ja
+        // concluidos, nunca do contador agregado `progress`, que pode
+        // vir guardado antigo.
+        overall_progress: officialProgress(completedLessonIds, OFFICIAL_LESSON_IDS, totalLessons).percent,
+        // FINAL POLISH: a sequencia vem SEMPRE das datas reais.
+        // Antes era `calcStreak(...) || progress.current_streak ||
+        // prevLocal.current_streak`: como 0 e um valor legitimo (a
+        // sequencia quebrou), o `||` ressuscitava um numero morto e a
+        // tela mostrava uma sequencia que ja nao existia.
+        current_streak: calcStreak([...new Set([...studyDates, today])], today),
       }));
       await syncCompletedLessons(activeUser.id, [...completedLessonIds, currentStudyLesson.id]);
     } else {
@@ -938,7 +945,10 @@ function App() {
           lessons_completed: (prev.lessons_completed || 0) + 1,
           current_streak: streak,
           longest_streak: Math.max(prev.longest_streak || 0, streak),
-          overall_progress: Math.min(100, Math.round((((prev.lessons_completed || 0) + 1) / Math.max(lessons.length, 1)) * 100)),
+          // FINAL POLISH: o numero vem das datas reais. Sem `|| atual`: quando
+          // a sequencia quebra, o resultado correto e 0, e 0 nao pode
+          // ser trocado por um valor antigo guardado.
+          overall_progress: officialProgress(completedLessonIds, OFFICIAL_LESSON_IDS, totalLessons).percent,
         };
       });
     }
@@ -1125,6 +1135,14 @@ function App() {
 
   const weekRow = useMemo(() => weekDaysFromToday(todayDateKey), [todayDateKey]);
   const liveStreak = useMemo(() => calcStreak(studyDates, todayDateKey), [studyDates, todayDateKey]);
+  // FINAL POLISH: o card de progresso passa a mostrar o numero calculado
+  // a partir dos IDs oficiais concluidos, nunca um contador agregado
+  // antigo. Era essa leitura que exibia 100% com 2 de 122.
+  const progressoOficial = useMemo(
+    () => officialProgress(completedLessonIds, OFFICIAL_LESSON_IDS, totalGeneratedBlocks),
+    [completedLessonIds],
+  );
+
   const displayStreak = Math.max(liveStreak, 0);
   const showResume = Boolean(resumeLesson?.lessonId) && lessonView === 'home' && !completedLessonIds.includes(resumeLesson.lessonId);
 
@@ -1286,10 +1304,17 @@ function App() {
 
         <section className="hero-card">
           <div className="hero-copy">
-            <span className="tag tag-hot">🔥 {displayStreak || studentState.current_streak || 0} dias de sequência</span>
+            // FINAL POLISH: o numero vem SO do calculo. O `|| atual` que estava
+          // aqui ressuscitava uma sequencia antiga depois da quebra —
+          // 0 e um resultado legitimo e precisa aparecer como 0.
+          <span className="tag tag-hot">
+            {displayStreak > 0
+              ? `🔥 ${displayStreak} ${displayStreak === 1 ? 'dia' : 'dias'} de sequência`
+              : 'Comece sua sequência hoje'}
+          </span>
             <h3>Você vai conseguir meu amor srsrsrsrsr</h3>
             <p>
-              Sua maior sequência foi <strong>{studentState.longest_streak || 0} dias</strong> e você estudou <strong>{studentState.study_minutes || 0} minutos</strong> esta semana.
+              Sua maior sequência foi <strong>{studentState.longest_streak || 0} dias</strong> e você estudou <strong>{studentState.study_minutes || 0} minutos</strong> no total.
             </p>
           </div>
 
@@ -1332,6 +1357,7 @@ function App() {
               <StatsContent
                 studentState={studentState}
                 totalLessons={totalGeneratedBlocks}
+                progressoOficial={progressoOficial}
                 lessonSeconds={lessonSeconds}
                 lessonView={lessonView}
               />
@@ -1464,8 +1490,10 @@ function StatsContent(props) {
     <>
       <div className="stat-card accent">
         <span className="stat-label">Progresso geral</span>
-        <strong>{Math.round(Number(studentState.overall_progress) || 0)}%</strong>
-        <small>{studentState.lessons_completed || 0} de {props.totalLessons} lições concluídas</small>
+        <strong>{props.progressoOficial?.percent ?? 0}%</strong>
+        <small>
+          {props.progressoOficial?.done ?? 0} de {props.progressoOficial?.total ?? props.totalLessons} lições concluídas
+        </small>
       </div>
       <div className="stat-card">
         <span className="stat-label">Questões resolvidas</span>

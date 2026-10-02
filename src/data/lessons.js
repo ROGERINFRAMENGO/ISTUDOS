@@ -1,3 +1,25 @@
+// ============================================================
+// AVISO — CONTEUDO DE MODELO, NAO CONTEUDO DE PRODUCAO
+// ------------------------------------------------------------
+// Os objetos `lessonMatematica` e `lessonPortugues` abaixo estao
+// CHEIOS de "COLE AQUI": sao um rascunho de autor, nao uma aula.
+//
+// Eles NAO chegam a estudante — nenhum componente importa estes
+// objetos. O que o app importa deste arquivo sao apenas os
+// utilitarios do fim (getDateKey, getDayKey, formatDateBR,
+// DAY_LABELS), que sao corretos e estao em uso.
+//
+// Antes existia uma linha no App.jsx que usava `lessons.length`
+// (length = 2, o numero deste arquivo) como denominador do
+// progresso geral. Com 2 licoes oficiais concluidas de 122, a
+// aluna via "100% de progresso". Corrigido: o denominador vem do
+// curriculo oficial (src/data/curriculum.js).
+//
+// NAO use estes objetos como fallback de aula. A fonte de verdade
+// do conteudo de uma aula e o generate-lesson, com o texto da IA
+// validado. Se uma aula cair no modelo generico, o sintoma e
+// "ainda nao carregou" — nao "voltar para este arquivo".
+// ============================================================
 // COMO MONTAR SEU CRONOGRAMA (SEM REPETIR)
 // Cada aula tem "date": 'AAAA-MM-DD' — aparece SÓ naquele dia.
 // A MATERIA repete (toda segunda tem matematica), mas o CONTEUDO é novo.
