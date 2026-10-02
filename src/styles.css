@@ -764,24 +764,60 @@ h1, h2, h3, h4, p {
 .quiz-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .quiz-option {
-  border: 1px solid var(--border);
-  background: rgba(248, 250, 252, 0.9);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  /* Alvo de toque confortavel: sem 56px a aluna erra a alternativa
+     no celular. */
+  min-height: 56px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
   color: var(--text);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
   text-align: left;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: var(--t-base);
 }
+
+/* A letra (A/B/C/D) fica num disco separado. Antes o <strong> e o
+   texto saiam colados ("A0,25") porque o botao nao era flex. */
+.quiz-option > strong {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.quiz-option > span { flex: 1 1 auto; }
 
 .quiz-option:hover,
 .quiz-option.selected {
-  border-color: rgba(139, 92, 246, 0.45);
-  background: rgba(139, 92, 246, 0.08);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.quiz-option.selected > strong {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--surface);
+}
+
+/* Sem contar so com a cor: o estado tambem ganha contorno. */
+.quiz-option.selected { box-shadow: 0 0 0 2px var(--brand) inset; }
+
+@media (max-width: 720px) {
+  .quiz-options { grid-template-columns: minmax(0, 1fr); }
 }
 
 .quiz-result-summary {
@@ -1800,7 +1836,7 @@ h1, h2, h3, h4, p {
 }
 
 /* ============================================================
-   FASE D — MINHAS AULAS
+   FASE D ï¿½ MINHAS AULAS
    ============================================================
    Estilos novos, reaproveitando as variaveis do tema que o resto
    da interface ja usa. O componente nao traz cor fixa: se o tema
@@ -2352,4 +2388,76 @@ h1, h2, h3, h4, p {
   .sim-question { font-size: 1.06rem; }
   .sim-result-score { font-size: 2.6rem; }
   .sim-nav { position: sticky; bottom: 0; background: var(--bg); padding: var(--sp-3) 0; }
+}
+/* ===================================================================
+   FINAL POLISH â€” Cronograma recolhivel, foco visivel e movimento reduzido
+   =================================================================== */
+
+/* O cabecalho da semana virou <button> para poder fechar. Sem isso as
+   10 semanas vinham todas abertas e a pagina passava de 20.000px: a
+   aluna perdia a semana de hoje no meio do scroll. */
+.schedule-week-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--t-base);
+}
+
+.schedule-week-head:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.schedule-week-head > div {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.schedule-week-head strong { font-size: 1rem; }
+.schedule-week-head small { color: var(--text-muted); }
+
+.schedule-caret {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.schedule-week.is-open { border-color: var(--brand); }
+
+.schedule-week.is-open .schedule-week-head {
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  background: var(--brand-soft);
+}
+
+/* Foco visivel para uso por teclado. */
+.schedule-week-head:focus-visible,
+.quiz-option:focus-visible,
+.sim-option:focus-visible,
+.primary-button:focus-visible,
+.ghost-button:focus-visible,
+.theme-option:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Quem tem preferencia por menos movimento nao recebe animacao. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

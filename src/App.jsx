@@ -702,10 +702,10 @@ function App() {
   }, [lessonView, lessonFlow, currentStudyLesson]);
 
   // Sincroniza datas de estudo do Supabase + local e recalcula quebra.
-  // Se ficou 1 dia sem licao, calcStreak retorna 0 (quebrou, estilo Duolingo).
+  // Se ficou 1 dia sem licao, computeStreak retorna 0 (quebrou, estilo Duolingo).
   const syncStudyDates = async (userId, localDates = []) => {
     if (!userId || !isSupabaseConfigured) {
-      const streak = calcStreak(localDates, todayDateKey);
+      const streak = computeStreak(localDates, todayDateKey);
       setStudentState((prev) => ({
         ...prev,
         current_streak: streak,
@@ -717,7 +717,7 @@ function App() {
     const remoteKeys = (remote || []).map((d) => normalizeDateKey(d));
     const merged = [...new Set([...(localDates || []), ...remoteKeys])];
     setStudyDates(merged);
-    const streak = calcStreak(merged, todayDateKey);
+    const streak = computeStreak(merged, todayDateKey);
     setStudentState((prev) => ({
       ...prev,
       current_streak: streak,
@@ -867,7 +867,7 @@ function App() {
     // Marca o dia como estudado (base da sequência estilo Duolingo).
     setStudyDates((prev) => {
       const merged = [...new Set([...(prev || []), today])];
-      const streak = calcStreak(merged, today);
+      const streak = computeStreak(merged, today);
       setStudentState((s) => ({
         ...s,
         current_streak: streak,
@@ -920,18 +920,18 @@ function App() {
         // vir guardado antigo.
         overall_progress: officialProgress(completedLessonIds, OFFICIAL_LESSON_IDS, totalLessons).percent,
         // FINAL POLISH: a sequencia vem SEMPRE das datas reais.
-        // Antes era `calcStreak(...) || progress.current_streak ||
+        // Antes era `computeStreak(...) || progress.current_streak ||
         // prevLocal.current_streak`: como 0 e um valor legitimo (a
         // sequencia quebrou), o `||` ressuscitava um numero morto e a
         // tela mostrava uma sequencia que ja nao existia.
-        current_streak: calcStreak([...new Set([...studyDates, today])], today),
+        current_streak: computeStreak([...new Set([...studyDates, today])], today),
       }));
       await syncCompletedLessons(activeUser.id, [...completedLessonIds, currentStudyLesson.id]);
     } else {
       // Modo offline: mantém XP/sequência localmente até o login.
       setStudentState((prev) => {
         const merged = [...new Set([...studyDates, today])];
-        const streak = calcStreak(merged, today);
+        const streak = computeStreak(merged, today);
         const prevSeconds = prev.study_seconds || (prev.study_minutes || 0) * 60;
         const nextSeconds = prevSeconds + realSeconds;
         return {
@@ -1134,12 +1134,16 @@ function App() {
   };
 
   const weekRow = useMemo(() => weekDaysFromToday(todayDateKey), [todayDateKey]);
-  const liveStreak = useMemo(() => calcStreak(studyDates, todayDateKey), [studyDates, todayDateKey]);
+  const liveStreak = useMemo(() => computeStreak(studyDates, todayDateKey), [studyDates, todayDateKey]);
   // FINAL POLISH: o card de progresso passa a mostrar o numero calculado
   // a partir dos IDs oficiais concluidos, nunca um contador agregado
   // antigo. Era essa leitura que exibia 100% com 2 de 122.
+  //
+  // O denominador e OFFICIAL_LESSON_IDS.length (122) e nao o tanto de
+  // blocos gerados: o numerador e uma contagem de IDs desta MESMA
+  // lista, e o denominador precisa sair dela tambem.
   const progressoOficial = useMemo(
-    () => officialProgress(completedLessonIds, OFFICIAL_LESSON_IDS, totalGeneratedBlocks),
+    () => officialProgress(completedLessonIds, OFFICIAL_LESSON_IDS, OFFICIAL_LESSON_IDS.length),
     [completedLessonIds],
   );
 
@@ -1303,11 +1307,13 @@ function App() {
         )}
 
         <section className="hero-card">
+          {/* FINAL POLISH: o numero vem SO do calculo. O `|| atual` que
+            estava aqui ressuscitava uma sequencia antiga depois da
+            quebra — 0 e um resultado legitimo e precisa aparecer como 0.
+            Em JSX o comentario precisa de chaves: um `//` solto aqui
+            aparecia como texto na tela da aluna. */}
           <div className="hero-copy">
-            // FINAL POLISH: o numero vem SO do calculo. O `|| atual` que estava
-          // aqui ressuscitava uma sequencia antiga depois da quebra —
-          // 0 e um resultado legitimo e precisa aparecer como 0.
-          <span className="tag tag-hot">
+            <span className="tag tag-hot">
             {displayStreak > 0
               ? `🔥 ${displayStreak} ${displayStreak === 1 ? 'dia' : 'dias'} de sequência`
               : 'Comece sua sequência hoje'}
@@ -1506,7 +1512,7 @@ function StatsContent(props) {
         <small>{(studentState.questions_answered || 0) > 0 ? 'Baseado nas suas respostas' : 'Responda o primeiro quiz'}</small>
       </div>
       <div className="stat-card">
-        <span className="stat-label">Tempo estudado</span>
+        <span className="stat-label">Tempo total acumulado</span>
         <strong>{formatStudyTime(studentState.study_seconds || (studentState.study_minutes || 0) * 60)}</strong>
         <small>Nesta lição: {formatStudyTime(props.lessonView === 'home' ? 0 : props.lessonSeconds)}</small>
       </div>

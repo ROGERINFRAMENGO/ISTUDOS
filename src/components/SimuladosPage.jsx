@@ -152,11 +152,26 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
       <section className="panel simulados-panel">
         <div className="panel-head">
           <h3>{activeSim.title}</h3>
-          <span className="tag">Questão {index + 1} de {total}</span>
+          <span className="tag">{activeSim.subject}</span>
         </div>
 
-        <div className="sim-progress">
-          <span style={{ width: `${((index + 1) / total) * 100}%` }} />
+        <div className="sim-quiz">
+        {/* .sim-progress e a BARRA (8px, overflow hidden): o cabecalho
+            precisa ser IRMAO dela, nunca filho — dentro da barra ele
+            seria cortado. */}
+        <div className="sim-progress-head">
+          <strong>Questão {index + 1} de {total}</strong>
+          <span className="tag">{answeredCount}/{total} respondidas</span>
+        </div>
+        <div
+          className="sim-progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={index + 1}
+          aria-label={`Questão ${index + 1} de ${total}`}
+        >
+          <i style={{ width: `${((index + 1) / total) * 100}%` }} />
         </div>
 
         <div className="quiz-question sim-question">
@@ -171,7 +186,8 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
                 className={`quiz-option ${selected === optionIndex ? 'selected' : ''}`}
                 onClick={() => handleAnswer(question.id, optionIndex)}
               >
-                <strong>{['A', 'B', 'C', 'D'][optionIndex] || optionIndex + 1})</strong> {option}
+                <strong aria-hidden="true">{['A', 'B', 'C', 'D'][optionIndex] || optionIndex + 1}</strong>
+                <span>{option}</span>
               </button>
             ))}
           </div>
@@ -194,6 +210,7 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
             Sair da prova
           </button>
         </div>
+        </div>
       </section>
     );
   }
@@ -211,9 +228,12 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
         </div>
 
         <div className={`sim-score ${percent >= 70 ? 'sim-score-good' : 'sim-score-low'}`}>
+          <div className="sim-result-score">
           <strong>{percent}%</strong>
-          <span>{percent >= 70 ? 'Muito bem! 🎉' : 'Quase lá — continue praticando 💪'}</span>
-          <small>Cada acerto vale XP e já somou no seu painel (seções: XP total e Questões resolvidas).</small>
+          <span className="sim-result-total">{hits}/{results.length} acertos</span>
+        </div>
+        <p>{percent >= 70 ? 'Muito bem! 🎉' : 'Quase lá — continue praticando 💪'}</p>
+        <small>Cada acerto vale XP e já somou no seu painel (seções: XP total e Questões resolvidas).</small>
         </div>
 
         <div className="quiz-results-wrap">
@@ -261,8 +281,9 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
       </p>
 
       <form className="sim-create" onSubmit={handleCreate}>
-        <label>
-          Semana do cronograma
+        <div className="sim-form">
+        <label className="sim-field">
+          <span>Semana do cronograma</span>
           <select value={form.week} onChange={(e) => setForm((p) => ({ ...p, week: e.target.value }))}>
             <option value="">Misto (qualquer semana)</option>
             {scheduleWeeks.map((week, index) => (
@@ -272,8 +293,8 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
             ))}
           </select>
         </label>
-        <label>
-          Matéria
+        <label className="sim-field">
+          <span>Matéria</span>
           <select value={form.subject} onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}>
             <option value="Todas">Misto (todas)</option>
             {BANK_SUBJECTS.map((subject) => (
@@ -281,16 +302,16 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
             ))}
           </select>
         </label>
-        <label>
-          Dificuldade
+        <label className="sim-field">
+          <span>Dificuldade</span>
           <select value={form.difficulty} onChange={(e) => setForm((p) => ({ ...p, difficulty: e.target.value }))}>
             {Object.entries(DIFFICULTY_LABELS).map(([key, label]) => (
               <option key={key} value={key}>{label}</option>
             ))}
           </select>
         </label>
-        <label>
-          Questões
+        <label className="sim-field">
+          <span>Questões</span>
           <input
             type="number"
             min="2"
@@ -299,8 +320,8 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
             onChange={(e) => setForm((p) => ({ ...p, count: e.target.value }))}
           />
         </label>
-        <label className="sim-title-field">
-          Título (opcional)
+        <label className="sim-field sim-field-full">
+          <span>Título (opcional)</span>
           <input
             type="text"
             maxLength="60"
@@ -309,7 +330,10 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
             onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
           />
         </label>
-        <button type="submit" className="primary-button">Criar simulado</button>
+        <div className="sim-nav sim-field-full">
+          <button type="submit" className="primary-button">Criar simulado</button>
+        </div>
+        </div>
       </form>
 
       {form.week && (
@@ -327,7 +351,11 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
       )}
 
       {simulados.length === 0 ? (
-        <p className="quiz-error">Nenhum simulado ainda. Crie o primeiro acima ou peça para a Tutora IA!</p>
+        <p className="sim-empty">
+          <strong>Nenhum simulado ainda.</strong>
+          <br />
+          Crie o primeiro com o formulário acima, ou peça para a Tutora IA no chat.
+        </p>
       ) : (
         <div className="sim-list">
           {simulados.map((sim) => {
@@ -335,19 +363,30 @@ export default function SimuladosPage({ initialId, onInitialIdConsumed, onResult
             return (
               <article key={sim.id} className="sim-card">
                 <div className="sim-card-head">
-                  <h4>{sim.title}</h4>
+                  <div className="sim-item">
+                    <h4 className="sim-item-title">{sim.title}</h4>
+                    <p className="sim-item-meta">
+                      {sim.subject} · {DIFFICULTY_LABELS[sim.difficulty] || 'Qualquer'} ·{' '}
+                      {new Date(sim.createdAt).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
                   <span className="tag">{sim.questions.length} questões</span>
                 </div>
-                <p className="sim-meta">
-                  {sim.week ? `Semana ${sim.week} · ` : ''}
-                  {sim.subject} · {DIFFICULTY_LABELS[sim.difficulty] || 'Qualquer'} ·{' '}
-                  {new Date(sim.createdAt).toLocaleDateString('pt-BR')}
-                  {(sim.attempts || []).length > 0 ? ` · ${sim.attempts.length} tentativa(s)` : ''}
-                </p>
+
+                <div className="sim-topic">
+                  {sim.week ? <span className="sim-chip">Semana {sim.week}</span> : null}
+                  <span className="sim-chip">{sim.subject}</span>
+                  <span className="sim-chip">{DIFFICULTY_LABELS[sim.difficulty] || 'Qualquer'}</span>
+                  <span className="sim-chip">
+                    {(sim.attempts || []).length} tentativa(s)
+                  </span>
+                </div>
+
                 {best !== null && <p className="sim-best">🏆 Melhor resultado: {best}%</p>}
-                <div className="sim-card-actions">
+
+                <div className="sim-item-actions">
                   <button className="primary-button small-button" onClick={() => startSimulado(sim)}>
-                    Começar
+                    Iniciar
                   </button>
                   <button className="ghost-button small-button" onClick={() => handleDelete(sim.id)}>
                     Excluir

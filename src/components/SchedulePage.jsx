@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { getPlanDaysForDate, isGeneratedDay } from '../data/curriculum';
 
 const KIND_TAGS = {
@@ -8,6 +8,26 @@ const KIND_TAGS = {
 };
 
 export default function SchedulePage(props) {
+  // Antes cada semana abria com a tabela inteira. Sao 10 semanas x 7
+  // dias: a pagina ficava com mais de 20.000px de altura e a aluna
+  // perdia a semana atual no meio do scroll. Agora so a semana de
+  // hoje vem aberta — as outras sao um clique.
+  const semanaAtualId = useMemo(() => {
+    const semana = props.weeks.find((week) => week.days.some((d) => d.key === props.todayDateKey));
+    return semana?.id ?? props.weeks[0]?.id ?? null;
+  }, [props.weeks, props.todayDateKey]);
+
+  const [abertas, setAbertas] = useState(() => new Set(semanaAtualId ? [semanaAtualId] : []));
+
+  const alternar = (id) => {
+    setAbertas((antes) => {
+      const proximo = new Set(antes);
+      if (proximo.has(id)) proximo.delete(id);
+      else proximo.add(id);
+      return proximo;
+    });
+  };
+
   return (
     <section className="panel schedule-panel">
       <div className="panel-head">
@@ -22,9 +42,15 @@ export default function SchedulePage(props) {
       <div className="schedule-list">
         {props.weeks.map((week) => {
           const isCurrentWeek = week.days.some((d) => d.key === props.todayDateKey);
+          const aberta = abertas.has(week.id);
           return (
-            <article key={week.id} className="schedule-week">
-              <header className="schedule-week-head">
+            <article key={week.id} className={`schedule-week${aberta ? ' is-open' : ''}`}>
+              <button
+                type="button"
+                className="schedule-week-head"
+                aria-expanded={aberta}
+                onClick={() => alternar(week.id)}
+              >
                 <div>
                   <strong>{week.title}{week.subtitle ? ` — ${week.subtitle}` : ''}</strong>
                   <small>{week.range}</small>
@@ -32,7 +58,10 @@ export default function SchedulePage(props) {
                 <span className={`tag ${isCurrentWeek ? 'tag-hot' : ''}`}>
                   {isCurrentWeek ? 'Semana atual' : week.range}
                 </span>
-              </header>
+                <span className="schedule-caret" aria-hidden="true">{aberta ? '▲' : '▼'}</span>
+              </button>
+              {!aberta ? null : (
+              <>
               <p className="schedule-goal">{week.goal}</p>
               <div className="schedule-table-wrap">
                 <table className="schedule-table">
@@ -107,6 +136,8 @@ export default function SchedulePage(props) {
                   </tbody>
                 </table>
               </div>
+              </>
+              )}
             </article>
           );
         })}
