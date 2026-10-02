@@ -32,6 +32,99 @@ const DELEGATING_PATTERN =
   /(pesquise\s+(isso|na\s+internet|no\s+google)|assista\s+(a\s+)?(um\s+)?(video|v[ií]deo)|procure\s+(no|na)\s+(youtube|google|internet))/i;
 
 // ------------------------------------------------------------
+// RESPOSTA DECLARADA (Prioridade 2 da finalizacao)
+// ------------------------------------------------------------
+// A amostragem da FASE E achou um erro real que passava: o campo
+// `answer` dizia "2/3" enquanto a explicacao demonstrava, com a
+// conta na tela, que "7/10" era o maior. Resposta e explicacao se
+// contradiziam e nada pegava.
+//
+// REGRA ESTREITA, deliberadamente:
+//
+//  1. So age quando a explicacao tem um MARCADOR EXPLICITO de
+//     resposta final ("Resposta: X", "resposta correta: X",
+//     "Logo, a resposta e X"). Sem marcador, NAO bloqueia: exigir
+//     marcador transformaria a regra em reprovadora de aula boa,
+//     que foi exatamente o erro da FASE C.
+//
+//  2. So compara quando o marcador e um rotulo curto (ate 24
+//     caracteres) que NAO e uma frase. "Resposta: a soma e cinco
+//     porque..." e frase, e nao e comparado.
+//
+//  3. A comparacao normaliza espacos, acentos e caixa. E nao
+//     interpreta matematica: nao usa eval, nao resolve fracao,
+//     nao tenta adivinhar.
+//
+//  4. Divergencia so bloqueia se as duas formas forem realmente
+//     diferentes depois de normalizar. Qualquer duvida nao bloqueia.
+//
+//  5. NUNCA para quando o valor vem de expressao do enunciado com
+//     sinal negativo em texto livre: o mathCheck ja cobre conta.
+
+const RESPOSTA_MARCADOR = /(?:^|[.;:\s])(?:resposta|resposta correta|resultado)\s*(?:final|correta)?\s*(?:é|e|:)\s*([^.;:\n]{1,24})/gi;
+
+/** Normaliza para comparar: minusculo, sem acento, espacos unidos. */
+function normalizarResposta(valor) {
+  return String(valor ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/[.,;:!?]+$/, "")
+    .trim();
+}
+
+/** Um rotulo e curto e nao-sentence? "7/10", "-7", "sim". */
+function pareceRotulo(valor) {
+  const v = String(valor ?? "").trim();
+  if (!v || v.length > 24) return false;
+  // Frase tem verbo conjugado ou conector; rotulo nao.
+  if (/\s(e|sao|foi|porque|portanto|logo|entao)\s/i.test(v)) return false;
+  if (/[a-z]{3,}\s+[a-z]{3,}/i.test(v) && !/^[\d\s.,/:+\-×÷()]+$/.test(v)) {
+    // Duas palavras sem digitos: pode ser "Tropical atlantica", que e
+    // uma resposta legitima. So descarta se for bem longa.
+    if (v.length > 18) return false;
+  }
+  return true;
+}
+
+/**
+ * Compara a resposta declarada no `answer` com a que a solucao
+ * anuncia explicitamente.
+ *
+ * @returns {string|null} descricao da divergencia, ou null.
+ */
+function findAnswerContradiction(answer, solution) {
+  const esperado = normalizarResposta(answer);
+  if (!esperado) return null;
+
+  const texto = String(solution ?? "");
+  if (!texto) return null;
+
+  // Todas as ocorrencias: se UMA delas bate com o answer, passa.
+  const achados = [...texto.matchAll(RESPOSTA_MARCADOR)];
+  if (!achados.length) return null; // sem marcador -> nao bloqueia
+
+  const declaradas = achados
+    .map((m) => normalizarResposta(m[1]))
+    .filter(Boolean)
+    .filter((v) => pareceRotulo(v));
+
+  if (!declaradas.length) return null; // marcador sem rotulo -> nao bloqueia
+
+  // Alguma declaracao bate com o answer? Entao esta coerente.
+  if (declaradas.some((d) => d === esperado)) return null;
+
+  // Se o marcador e fraco ("resultado:") e nao ha "resposta", e
+  // ainda assim o answer nao bate, exige segunda evidencia antes
+  // de reprovar: o "resultado" pode ser de um passo intermediario.
+  const temMarcadorForte = /resposta/i.test(texto);
+  if (!temMarcadorForte) return null;
+
+  return `answer diz "${String(answer).trim().slice(0, 30)}" mas a solucao declara "Resposta: ${declaradas[0].slice(0, 30)}"`;
+}
+
+// ------------------------------------------------------------
 // METADADO DO CRONOGRAMA (Prioridade 1)
 // ------------------------------------------------------------
 // O bug: o prompt mandava o modelo citar "semana 1, dia 3", "bloco",
@@ -431,6 +524,7 @@ export { cleanText, looksLikePlaceholder, normalizeDifficulty, DELEGATING_PATTER
 export {
   findScheduleLeak,
   findSecretLeak,
+  findAnswerContradiction,
   findHollow,
   findRepetitions,
   findCoherenceIssues,
@@ -594,6 +688,11 @@ export function validateLesson(raw, input = {}) {
   guidedPractice.forEach((item, i) => {
     const pLeak = findScheduleLeak(item.question, item.explanation);
     if (pLeak) errors.push(`guidedPractice[${i}]: vazou metadado ("${pLeak}")`);
+
+    // Resposta declarada que contradiz o campo answer. So dispara
+    // com marcador explicito na explicacao (ver findAnswerContradiction).
+    const contra = findAnswerContradiction(item.answer, item.explanation);
+    if (contra) errors.push(`guidedPractice[${i}]: ${contra}`);
   });
 
   // (A2) Segredo e instrucao de sistema. Aqui a varredura e TOTAL: nao

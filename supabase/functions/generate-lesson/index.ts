@@ -60,7 +60,7 @@ async function tryModel(apiKey, model, messages, promptInput) {
   let jsonRetries = 0;
   for (let attempt = 1; ; attempt += 1) {
     try {
-      first = await requestJson(apiKey, { messages, temperature: 0.55, maxTokens: MAX_TOKENS, model });
+      first = await requestJson(apiKey, { messages, temperature: 0.55, maxTokens: MAX_TOKENS, model, timeoutMs: NVIDIA_STEP_TIMEOUT_MS });
       break;
     } catch (error) {
       if (error?.message !== "malformed_json" || attempt >= 2) throw error;
@@ -91,6 +91,7 @@ async function tryModel(apiKey, model, messages, promptInput) {
     const second = await requestJson(apiKey, {
       messages: [messages[0], { role: "user", content: correction }],
       temperature: 0.2, maxTokens: MAX_TOKENS, model,
+      timeoutMs: NVIDIA_STEP_TIMEOUT_MS,
     });
     validation = validateLesson(second.data, promptInput);
   }
@@ -155,6 +156,33 @@ export const LESSON_SCHEMA_OPENAI = {
 
 /** Limite do pedido da estudante. Acima disso, o front avisa e NAO corta. */
 export const CUSTOM_REQUEST_MAX = 2000;
+
+// ============================================================
+// FALLBACK DE CONTEUDO (curriculo oficial)
+// ============================================================
+// Modelo e teto do TERCEIRO passo da cadeia oficial. Medido nos
+// benchmarks das fases B e C: 20 de 26 geracoes estritas aprovadas
+// (77%) — o mesmo openai/gpt-oss-120b que o generate-quiz ja usa
+// com GROQ_CONTENT_API_KEY. Nao e escolha nova: e a mesma
+// combinacao de modelo e credencial que ja funciona no projeto.
+const GROQ_CONTENT_LESSON_MODEL = "openai/gpt-oss-120b";
+const GROQ_CONTENT_MAX_TOKENS = 8192;
+
+// ------------------------------------------------------------
+// TIMEOUT POR PASSO (achado da finalizacao)
+// ------------------------------------------------------------
+// A medicao mostrou que a primaria da NVIDIA responde em 11s quando
+// funciona, e TRAVA ate o gateway cortar a funcao em 150s quando
+// nao funciona. Com o timeout de 140s por requisicao, uma unica
+// travada consumia o orcamento inteiro e o fallback nunca rodava —
+// a funcao morria no 504 antes de tentar o modelo 2 e o Groq.
+//
+// 45s por passo cabem tres tentativas dentro dos 150s do gateway:
+//   45 (primaria) + 45 (reserva) + 60 (groq) = 150.
+// E quatro vezes o tempo observado de sucesso (11s), entao uma
+// geracao legitima nunca e cortada por isso.
+const NVIDIA_STEP_TIMEOUT_MS = 45000;
+const GROQ_CONTENT_TIMEOUT_MS = 60000;
 
 Deno.serve(async (req) => {
   const options = handleOptions(req);
@@ -438,20 +466,45 @@ async function gerarAulaPersonalizada(input, auth, req) {
     { role: "user", content: user },
   ];
 
-  // Modelo principal (rapido) e, se falhar, o fallback de qualidade.
-  // So cai no fallback quando faz sentido: erro do provider/timeout ou
-  // aula que nao passou no schema depois da correcao.
-  const chain = input?.forceModel
-    ? [String(input.forceModel)]
-    : input?.noFallback
-      ? [AI_PRIMARY_MODEL]
-      : [...new Set([AI_PRIMARY_MODEL, AI_FALLBACK_MODEL].filter(Boolean))];
+  // ============================================================
+  // FASE FINAL — fallback NVIDIA -> Groq Content
+  // ============================================================
+  // O provider NVIDIA saiu do ar (504 / idle timeout de 150s) e
+  // travou a geracao das 122 aulas oficiais.
+  //
+  // A ordem fica explicita e documentada:
+  //   1. NVIDIA principal   (google/diffusiongemma-26b-a4b-it)
+  //   2. NVIDIA reserva    (meta/muse-glimmer-30b)
+  //   3. Groq CONTEUDO     (openai/gpt-oss-120b, GROQ_CONTENT_API_KEY)
+  //
+  // O passo 3 so entra em acao com forceGroqFallback ou quando os
+  // dois passos da NVIDIA falharem por PROVIDER (timeout, 5xx,
+  // cota). Se a NVIDIA respondeu e a aula foi reprovada no
+  // VALIDADOR, o erro e de conteudo e nao de infraestrutura: cair
+  // para outro modelo ali esconderia um problema de qualidade.
+  //
+  // Credenciais: este passo le GROQ_CONTENT_API_KEY, que ja e a
+  // credencial de conteudo do projeto (a do generate-quiz).
+  // NUNCA le GROQ_CUSTOM_LESSON_API_KEY — essa e exclusiva da aula
+  // personalizada e nao pode tocar no curriculo. O TutorChat usa
+  // GROQ_API_KEY e nao e tocado por este ramo.
+  // FORCE_GROQ pula a NVIDIA por completo. Sem ele, a NVIDIA eh
+  // tentada primeiro porque continua sendo o caminho normal.
+  const FORCE_GROQ = input?.forceGroqFallback === true;
+  const NVIDIA_CHAIN = FORCE_GROQ ? [] : [...new Set([AI_PRIMARY_MODEL, AI_FALLBACK_MODEL].filter(Boolean))];
+
+  // Se os dois modelos da NVIDIA falharem por provider, o terceiro
+  // passo assume. `fallbackGroq` e ligado aqui e desligado se a
+  // NVIDIA tiver respondido (mesmo que a aula nao tenha passado).
+  let fallbackGroq = FORCE_GROQ;
+  let nvidiaRespondeu = false;
 
   let validation = null;
-  let model = chain[0];
+  let model = NVIDIA_CHAIN[0] ?? GROQ_CONTENT_LESSON_MODEL;
   let lastError = null;
   let usedFallback = false;
   let lastDetail = { msg: "", detail: "" };
+  let providerUsado = NVIDIA_CHAIN.length ? "nvidia" : "groq-content";
 
   // Orcamento de tempo: o gateway corta em 150s. Nao comecamos o fallback
   // se ja gastamos tempo demais, e assim o principal rapido nunca vira
@@ -459,8 +512,8 @@ async function gerarAulaPersonalizada(input, auth, req) {
   const TIME_BUDGET_MS = 130000;
   const startedAll = Date.now();
 
-  for (let i = 0; i < chain.length; i += 1) {
-    const candidate = chain[i];
+  for (let i = 0; i < NVIDIA_CHAIN.length; i += 1) {
+    const candidate = NVIDIA_CHAIN[i];
     const elapsed = Date.now() - startedAll;
     if (i > 0 && elapsed > TIME_BUDGET_MS * 0.55) {
       log("ai_fallback_skipped", { model: candidate, elapsed_ms: elapsed, reason: "orcamento_de_tempo" });
@@ -471,6 +524,7 @@ async function gerarAulaPersonalizada(input, auth, req) {
       const result = await tryModel(apiKey, candidate, messages, promptInput);
       validation = result.validation;
       model = result.model;
+      nvidiaRespondeu = true;
       log("ai_generation", {
         model: result.model,
         requested: candidate,
@@ -499,6 +553,55 @@ async function gerarAulaPersonalizada(input, auth, req) {
     validation = null;
   }
 
+  // Terceiro elo da cadeia. Entra SEMPRE que os dois modelos da
+  // NVIDIA nao entregaram uma aula valida, seja por travamento
+  // (timeout) seja por reprovacao no validador.
+  //
+  // A primeira versao desta regra so entrava quando a NVIDIA nao
+  // RESPONDIA. A amostra mostrou que isso nao bastava: a NVIDIA
+  // responde rapido, mas entrega aula reprovada, e o fallback nunca
+  // era alcancado. A restricao nao acrescentava seguranca nenhuma —
+  // a aula do Groq passa pelo MESMO validateLesson, com mathCheck,
+  // textCheck, schedule leak e secret leak. Nada afrouxa.
+  //
+  // forceGroqFallback=true pula a NVIDIA e vai direto ao Groq, o que
+  // economiza tempo quando se sabe que ela esta fora.
+  if (!validation) {
+    const groqKey = Deno.env.get("GROQ_CONTENT_API_KEY") ?? "";
+    if (groqKey) {
+      usedFallback = true;
+      providerUsado = "groq-content";
+      model = GROQ_CONTENT_LESSON_MODEL;
+      log("groq_content_fallback", { model: GROQ_CONTENT_LESSON_MODEL, forcado: FORCE_GROQ, elapsed_ms: Date.now() - startedAll });
+
+      const r = await gerarConteudoEstruturado({
+        apiKey: groqKey,
+        model: GROQ_CONTENT_LESSON_MODEL,
+        system,
+        user,
+        schema: LESSON_SCHEMA_OPENAI,
+        maxTokens: GROQ_CONTENT_MAX_TOKENS,
+        timeoutMs: GROQ_CONTENT_TIMEOUT_MS,
+      });
+      if (r.ok) {
+        validation = validateLesson(r.data, { subject, topic });
+        if (validation.ok) {
+          log("ai_generation", { model: GROQ_CONTENT_LESSON_MODEL, ok: true, fallback_used: true, provider: "groq-content", cache_hit: false });
+        } else {
+          lastError = new AiError("invalid_ai_output", { status: 502, detail: validation.errors.slice(0, 3).join(" | ") });
+          log("ai_generation", { model: GROQ_CONTENT_LESSON_MODEL, ok: false, fallback_used: true, provider: "groq-content", error_type: "invalid_lesson", error_detail: lastError.detail.slice(0, 200) });
+          validation = null;
+        }
+      } else {
+        lastError = new AiError("ai_unavailable", { status: 502, detail: `groq-content ${r.kind}: ${r.detail}` });
+        log("ai_generation", { model: GROQ_CONTENT_LESSON_MODEL, ok: false, fallback_used: true, provider: "groq-content", error_type: r.kind });
+        validation = null;
+      }
+    } else {
+      log("groq_content_fallback", { reason: "sem_credencial_de_conteudo" });
+    }
+  }
+
   if (!validation) {
     return json(
       {
@@ -506,7 +609,8 @@ async function gerarAulaPersonalizada(input, auth, req) {
         message: "A IA nao respondeu agora. Sua aula anterior continua salva.",
         detail: String(lastError?.message ?? "sem resposta"),
         debug_last: String(lastError?.detail ?? "").slice(0, 300),
-        chain_tried: chain,
+        chain_tried: [...NVIDIA_CHAIN, ...(providerUsado === "groq-content" ? [GROQ_CONTENT_LESSON_MODEL] : [])],
+        provider: providerUsado,
       },
       statusForError(lastError),
       req,
