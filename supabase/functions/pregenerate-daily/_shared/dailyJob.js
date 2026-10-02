@@ -55,29 +55,23 @@ export function chaveCache({
 /**
  * Cache valido?
  *
- * A entrada e uma LINHA de `generated_lessons`, com as colunas de
- * verdade da tabela:
+ * Entradas do `aiCache` tem a forma
+ * `{ lesson, lessonId, quiz, quizId, model, updatedAt }`.
  *
- *   cache_key ... a chave logica (a versao do conteudo ja esta
- *                dentro dela, como segmento)
- *   lesson_data ... o conteudo gerado
+ * Duas condicoes recusam, e as duas importam:
+ *  - nao existe a entrada;
+ *  - `lesson` nao tem `sections` com conteudo -- um objeto vazio que
+ *    passou pelo save seria exatamente a aula falsa que nao pode
+ *    existir no cache.
  *
- * Nao existe coluna `versao`: a versao faz parte da `cache_key`, que
- * ja foi comparada pelo `select`. Então a validação aqui e somente
- * "existe conteudo de verdade?".
- *
- * Tres condicoes recusam:
- *  - a linha nao existe;
- *  - nao ha `lesson_data` (ou veio nulo);
- *  - `sections` veio vazio -- um objeto que passou pelo save sem
- *    conteudo e exatamente a aula falsa que nao pode existir.
+ * Nao ha mais coluna `versao`: a versao do conteudo e um SEGMENTO da
+ * chave, entao "versao antiga" e outra chave, que o job nem procura.
  */
 export function cacheValido(entrada) {
   if (!entrada || typeof entrada !== 'object') return false;
-  // `dados` e o nome do teste; `lesson_data` e o da tabela real.
-  const dados = entrada.dados ?? entrada.lesson_data;
-  if (!dados || typeof dados !== 'object') return false;
-  const secoes = dados.sections ?? dados.secoes;
+  const aula = entrada.lesson ?? entrada.dados ?? entrada.lesson_data;
+  if (!aula || typeof aula !== 'object') return false;
+  const secoes = aula.sections ?? aula.secoes;
   return Array.isArray(secoes) && secoes.length > 0;
 }
 

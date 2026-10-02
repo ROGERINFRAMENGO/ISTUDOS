@@ -10,12 +10,6 @@ import {
 } from './data/mockData';
 import { DAY_LABELS, formatDateBR, getDateKey, getDayKey, getLessonsForDay, getLessonsForDate, lessons } from './data/lessons';
 import { getSession, onAuthStateChange, resetPassword, signIn, signOut, signUp } from './services/auth';
-// A conta permanente vem de services/account.js, e nao de services/auth.js:
-// account-setup cria o usuario pela Admin API (o signUp do cliente falha
-// porque o projeto esta sem limite de e-mails e sem SMTP) e ja vincula o
-// app_state no mesmo passo. A senha de e-mail nunca e guardada aqui -- a
-// sessao do Supabase e que lembra o aparelho.
-import { currentAccount, entrarEOuCriar, sair as sairDaConta } from './services/account';
 import {
   EMPTY_PROGRESS,
   countTotalLessons,
@@ -76,14 +70,18 @@ const sidebarItems = [
   'Configurações',
 ];
 
-// A senha de dispositivo saiu. Ela era comparada com um texto no
-// JavaScript ('teamo', mais acima), ou seja: qualquer pessoa que
-// abrisse o site podia ler a senha no bundle e entrar. Nao era
-// seguranca, era um obstaculo com a porta trancada de lado.
+// A senha unica e uma BARREIRA DE CONVENIENCIA, nao autenticacao.
 //
-// Agora a porta e a conta permanente: e-mail + senha, com a sessao do
-// Supabase. E a MESMA conta no computador e no celular, que e o que
-// faz o estado sincronizar -- e o motivo de o app_state ter dono.
+// Ela fica no JavaScript, ou seja: quem abrir o site consegue ler. Isso
+// ja foi verdade antes e continua sendo, e e uma escolha consciente --
+// o produto e de uma pessoa so, e o objetivo e nao pedir cadastro nem
+// e-mail parastudar. Nao e para ser tratada como seguranca, e por isso
+// que o texto da tela nao promete protecao nenhuma.
+//
+// O que ESTA protegido de verdade sao as tabelas por usuario
+// (tentativas, mensagens, aulas): cada uma continua fechada por RLS.
+const APP_PASSWORD = 'teamo';
+const DEVICE_UNLOCK_KEY = 'istudos_device_unlocked';
 const COMPLETED_LESSONS_KEY = 'istudos_completed_lessons';
 const STUDY_DATES_KEY = 'istudos_study_dates';
 const RESUME_LESSON_KEY = 'istudos_resume_lesson';
@@ -232,17 +230,17 @@ async function countTodayLessons(userId) {
 function App() {
   const [selectedSubject, setSelectedSubject] = useState(subjects[0]);
   const [completedToday, setCompletedToday] = useState(() => loadLocalStudyDates().includes(getDateKey(new Date())));
-  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState('');
-  const [authBusy, setAuthBusy] = useState(false);
-  const [criandoConta, setCriandoConta] = useState(false);
-  // Conta aberta? Comeca pela sessao do Supabase: se o refresh token
-  // ainda vale, o aparelho ja entra direto depois de um F5, sem pedir
-  // e-mail e senha de novo.
-  const [isDeviceUnlocked, setIsDeviceUnlocked] = useState(false);
-  const [contaAtual, setContaAtual] = useState(null);
-  const [sessaoVerificada, setSessaoVerificada] = useState(false);
+  // Acesso local do aparelho: o navegador lembra que esta senha ja foi
+  // digitada aqui. E so isto -- convenience, nao sessao.
+  const [isDeviceUnlocked, setIsDeviceUnlocked] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return localStorage.getItem(DEVICE_UNLOCK_KEY) === 'true';
+  });
   // Estado local salvo tem prioridade — senao XP/progresso zeram no refresh.
   const [studentState, setStudentState] = useState(() => ({
     ...studentProfile,
@@ -812,56 +810,34 @@ function App() {
     return { progress, current: studentState.xp, total: currentLevelXp };
   }, [studentState.xp]);
 
-  // Restaura a sessao ao abrir o site: se o refresh token do Supabase
-  // ainda vale, entra direto. E o que faz o F5 nao pedir a senha de
-  // novo, e o que garante o mesmo user_id no computador e no celular.
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      const conta = await currentAccount();
-      if (!vivo) return;
-      setContaAtual(conta);
-      // Sessao anonima NAO conta: e um user_id diferente em cada
-      // aparelho, que e exatamente o que a conta permanente veio
-      // substituir. Sem isso, o aparelho entraria sozinho e voltaria a
-      // ler o estado errado.
-      setIsDeviceUnlocked(Boolean(conta && !conta.anonima));
-      setSessaoVerificada(true);
-    })();
-    return () => { vivo = false; };
-  }, []);
-
-  const unlockApp = async (event) => {
+  // Volta ao modelo antigo: uma senha, sem e-mail e sem conta permanente.
+  // O `localStorage` guarda so o fato de este aparelho ja ter passado
+  // pela tela -- nunca a senha.
+  const unlockApp = (event) => {
     event.preventDefault();
-    if (authBusy) return;
 
-    setAuthBusy(true);
-    setAuthError('');
+    const typedPassword = passwordInput.trim().toLowerCase();
 
-    const resultado = await entrarEOuCriar(emailInput, passwordInput, { criando: criandoConta });
-    setPasswordInput('');
-
-    if (!resultado.ok) {
-      setAuthError(resultado.erro ?? 'Nao consegui entrar.');
-      setAuthBusy(false);
+    if (typedPassword === APP_PASSWORD) {
+      localStorage.setItem(DEVICE_UNLOCK_KEY, 'true');
+      setIsDeviceUnlocked(true);
+      setPasswordInput('');
+      setAuthError('');
       return;
     }
 
-    // account-setup ja vincula o app_state no mesmo passo, entao nao
-    // existe caminho "entrei, mas o estado continua sem dono".
-    const conta = await currentAccount();
-    setContaAtual(conta);
-    setIsDeviceUnlocked(true);
-    setAuthBusy(false);
+    setAuthError('Senha incorreta. Tente novamente.');
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem(DEVICE_UNLOCK_KEY);
     setIsDeviceUnlocked(false);
-    setContaAtual(null);
     setPasswordInput('');
     setAuthError('');
 
-    await sairDaConta();
+    if (isSupabaseConfigured) {
+      await signOut();
+    }
     resetAiSession();
 
     setActiveUser(null);
@@ -1242,13 +1218,6 @@ function App() {
     );
   }
 
-  if (!sessaoVerificada) {
-    // Antes de responder "precisa entrar", espera a sessao responder.
-    // Sem este guarda, todo F5 pintaria a tela de login por uma fracao de
-    // segundo -- mesmo com a conta aberta -- e depois sumiria.
-    return <div className="auth-screen" />;
-  }
-
   if (!isDeviceUnlocked) {
     return (
       <div className="auth-screen">
@@ -1260,58 +1229,29 @@ function App() {
             </div>
           </div>
 
-          <h2>{criandoConta ? 'Criar sua conta' : 'Entre para continuar seus estudos'}</h2>
+          <h2>Entre para continuar seus estudos</h2>
 
           <form className="auth-form" onSubmit={unlockApp}>
             <label>
-              E-mail
+              Senha do app
               <input
-                type="email"
-                value={emailInput}
-                onChange={(event) => setEmailInput(event.target.value)}
-                placeholder="seu@email.com"
-                autoComplete="email"
+                type="password"
+                value={passwordInput}
+                onChange={(event) => setPasswordInput(event.target.value)}
+                placeholder="Digite a senha"
+                autoComplete="current-password"
                 autoFocus
                 required
               />
             </label>
 
-            <label>
-              Senha
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(event) => setPasswordInput(event.target.value)}
-                placeholder={criandoConta ? 'Crie uma senha' : 'Digite a senha'}
-                autoComplete={criandoConta ? 'new-password' : 'current-password'}
-                required
-                minLength={criandoConta ? 8 : undefined}
-              />
-            </label>
-
             {authError && <p className="auth-message error">{authError}</p>}
 
-            <button type="submit" className="primary-button auth-submit" disabled={authBusy}>
-              {authBusy ? 'Entrando...' : criandoConta ? 'Criar conta' : 'Entrar'}
+            <button type="submit" className="primary-button auth-submit">
+              Entrar
             </button>
 
-            <button
-              type="button"
-              className="auth-link"
-              onClick={() => {
-                setCriandoConta((valor) => !valor);
-                setAuthError('');
-              }}
-              disabled={authBusy}
-            >
-              {criandoConta ? 'Ja tenho conta' : 'Primeira vez? Criar conta'}
-            </button>
-
-            <p className="auth-hint">
-              {criandoConta
-                ? 'Sua conta guarda o progresso e sincroniza celular e computador. Voce nao precisa lembrar de mais nada.'
-                : 'A mesma conta funciona no computador e no celular.'}
-            </p>
+            <p className="auth-hint">Essa senha fica salva neste dispositivo e só precisa ser digitada uma vez.</p>
           </form>
         </div>
       </div>

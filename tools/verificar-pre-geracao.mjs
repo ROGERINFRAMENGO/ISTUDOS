@@ -190,6 +190,47 @@ secao('Teste 8 — versao do conteudo mora na chave');
   ok(c.salvas.every((s) => s.chave !== chaveAntiga), 'nao sobrescreve a linha antiga');
 }
 
+// ---------------------------------------------------------------- 8b
+// O FORMATO REAL: `app_state.sections.aiCache`
+//
+// A auditoria mostrou que o caminho normal do app nao usa a tabela
+// `generated_lessons`: usa o `aiCache`, dentro da linha compartilhada.
+// Entao o formato que o job encontra em producao e este:
+//
+//   { lesson: { sections: [...] }, lessonId, quiz, quizId, model, updatedAt }
+//
+// Se o `cacheValido` so entendesse o formato antigo da tabela, ele
+// veria "sem aula" num cache cheio e o cron chamaria o provider toda
+// vez -- e, pior, gravaria por cima do conteudo que a Anna tem no
+// celular. Estes testes travam esse erro.
+secao('Teste 8b — formato real do aiCache');
+{
+  const chave = chaveCache(AULA_A);
+  const aulaBoa = { title: 'Aula real', sections: [{ title: 'Parte 1', explanation: '...' }] };
+
+  ok(cacheValido({ lesson: aulaBoa, lessonId: 'x', model: 'm', updatedAt: 1 }),
+    'entrada no formato aiCache (lesson + lessonId) e valida');
+  ok(!cacheValido({ lessonId: 'x', quiz: null, updatedAt: 1 }),
+    'entrada sem lesson NAO e valida');
+  ok(!cacheValido({ lesson: { sections: [] }, lessonId: 'x', updatedAt: 1 }),
+    'aiCache com sections vazio NAO e valida');
+  ok(!cacheValido({ lesson: { title: 'so titulo' }, lessonId: 'x', updatedAt: 1 }),
+    'aula sem sections NAO e valida (e a aula falsa)');
+
+  // Duas entradas do aiCache, uma pronta e outra nao: o job tem que
+  // considerar pronta SO a que tem lesson de verdade.
+  const c = cenario({
+    cache: {
+      [chaveCache(AULA_A)]: { lesson: aulaBoa, lessonId: 'a', updatedAt: 10 },
+      [chaveCache(AULA_B)]: { lesson: { sections: [] }, lessonId: 'b', updatedAt: 10 },
+    },
+  });
+  const r = await rodar(c, [AULA_A, AULA_B]);
+  ok(r.existentes.includes(AULA_A.id), 'aula valida do aiCache e reaproveitada');
+  ok(r.geradas.includes(AULA_B.id), 'aula do aiCache sem conteudo e regenerada');
+  ok(r.chamadas === 1, 'so uma chamada de provider', `chamadas=${r.chamadas}`);
+}
+
 // ---------------------------------------------------------------- 9
 secao('Teste 9 — virada do dia em Sao Paulo');
 {

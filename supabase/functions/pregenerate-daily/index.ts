@@ -15,14 +15,20 @@
 // `CRON_SECRET` no cabecalho Authorization. Ninguem mais: o endpoint
 // nao aceita chamada de navegador e nao responde sem o segredo.
 //
-// PARA QUEM GERA
+// PARA ONDE GRAVA
 //
-// `generated_lessons.user_id` e NOT NULL e tem FK para auth.users, e
-// o indice unico e (user_id, cache_key): as aulas sao POR USUARIO.
-// O job entao usa o dono do `app_state` -- a mesma conta que a aluna
-// usa no aparelho. Sem dono, o job nao gera nada e diz por que: e
-// melhor do dia sem aula pronta do que uma aula gerada para a conta
-// errada, que a aluna nunca veria.
+// Descobri na auditoria desta adaptacao que o caminho normal do app
+// NAO usa a tabela `generated_lessons`: ele usa
+// `app_state.sections.aiCache`, a linha compartilhada que os aparelhos
+// ja trocam entre si. O job entao escreve no MESMO lugar que o app le.
+//
+// Isso e o que torna a pre-geracao possivel sem conta permanente: nao
+// existe `user_id`, nao existe `owner_id`, nao existe vinculo. O job
+// escreve na linha unica e o aparelho da Anna le a aula pronta.
+//
+// A chave do cache e a mesma de src/services/ai.js (lessonCacheKey),
+// byte a byte: se divergir em um campo, o app procura uma chave que
+// nao existe e mostra "aula nao disponivel" com o cache cheio.
 //
 // O QUE ESTE ARQUIVO NAO FAZ
 //
@@ -126,28 +132,57 @@ function responder(req, status, corpo) {
 }
 
 // ---------------------------------------------------------------
-// AUTORIZACAO
+// O SEGREDO VEM DO VAULT, e nao do ambiente
 //
-// O unico chamador legitimo e o pg_cron, com CRON_SECRET.
+// O CRON_SECRET tem UM lugar so: o Vault. A funcao le a la, na
+// chamada, pela RPC `cron_secret`, que so responde para service_role.
 //
-// `verify_jwt` fica DESLIGADO de proposito: o cron manda o segredo no
-// cabecalho Authorization, e nao um JWT de usuario -- nao existe
-// sessao de aluna nenhuma atras dessa chamada. Desligar o verify_jwt
-// sem este passo seria deixar a funcao aberta; com ele, quem nao tem
-// o segredo leva 401 e nada acontece.
+// Por que nao Deno.env: com o valor nos dois lados, cada rotacao
+// exigia copiar a credencial de um lugar para o outro -- e foi
+// exatamente numa copia dessas que o valor apareceu no output de uma
+// sessao anterior. Agora ele nasce no Vault e nao e transmitido.
 //
-// O segredo vive no Vault e no ambiente da funcao. Ele nunca vai para
-// o bundle, nunca aparece no log e nunca volta na resposta: o
-// compare e de tempo constante, para nao dar palpite por diferenca
-// de tempo.
+// A leitura e memorizada no cold start da instancia. O segredo muda
+// por rotacao, nao por requisicao, entao reler a cada chamada seria
+// desperdicio sem ganho nenhum.
 // ---------------------------------------------------------------
-function autorizado(req: Request): boolean {
-  const segredo = Deno.env.get("CRON_SECRET") ?? "";
+let segredoMemo: string | null = null;
+
+async function lerSegredo(): Promise<string> {
+  if (segredoMemo) return segredoMemo;
+  const { data } = await postgrest<{ cron_secret: string } | { cron_secret: string }[]>(
+    'rpc/cron_secret',
+    { method: 'POST', body: {} },
+  );
+  // O PostgREST devolve a linha como objeto solto quando a funcao
+  // retorna escalar, e como array quando retorna setof. Sem esta
+  // normalizacao, ler `data.cron_secret` de um array daria undefined e
+  // o job recusaria toda chamada, inclusive a legitima do cron.
+  const linha = Array.isArray(data) ? data[0] : data;
+  segredoMemo = linha?.cron_secret ?? '';
+  return segredoMemo;
+}
+
+async function autorizado(req: Request): Promise<boolean> {
+  // Falha ao ler o segredo e "nao autorizado", nunca 500: um erro de
+  // infraestrutura aqui viraria 500 e o cron registraria falha em vez
+  // de "chamada recusada", escondendo a causa real.
+  let segredo = '';
+  try {
+    segredo = await lerSegredo();
+  } catch (erro) {
+    // Falha ao ler o segredo e "nao autorizado", nunca 500: um erro de
+    // infraestrutura viraria "erro interno" e esconderia a causa.
+    log("segredo_indisponivel", { erro: String((erro as Error)?.message ?? erro).slice(0, 80) });
+    return false;
+  }
   if (!segredo) return false;
 
   const recebido = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!recebido || recebido.length !== segredo.length) return false;
 
+  // Comparacao de tempo constante: sem isso, da para adivinhar o
+  // segredo medindo quanto tempo a funcao leva para recusar.
   let diff = 0;
   for (let i = 0; i < segredo.length; i += 1) diff |= segredo.charCodeAt(i) ^ recebido.charCodeAt(i);
   return diff === 0;
@@ -189,52 +224,79 @@ async function postgrest<T>(caminho: string, init: RequestInit = {}): Promise<T>
   return corpo as T;
 }
 
-/** O dono do app_state: e para essa conta que o job prepara as aulas. */
-async function donoDoEstado(): Promise<string | null> {
-  const linhas = await postgrest<{ owner_id: string | null }[]>(
-    "app_state?select=owner_id&id=eq.principal&limit=1",
-  );
-  return linhas?.[0]?.owner_id ?? null;
+// O CACHE REAL DE AULAS NAO E `generated_lessons`
+// ------------------------------------------------------------
+// discovered na auditoria desta adaptacao: o caminho normal do app
+// NAO usa a tabela `generated_lessons`. Ele usa
+// `app_state.sections.aiCache`, que ja e a linha compartilhada entre
+// os aparelhos -- e o proprio mergeSharedCache() do app junta o
+// aiCache remoto no local.
+//
+// Consequencia: `generated_lessons` e `user_id NOT NULL` nao atrapalham,
+// porque o job nao precisa escrever la. Ele escreve no MESMO lugar que
+// o app le, e a aula pre-gerada aparece na tela sem nenhuma chamada
+// extra, sem user_id e sem conta.
+//
+// Chave do cache (ai.js lessonCacheKey) -- mesma ordem, mesmos campos:
+//   curriculumVersion | versaoConteudo | week | dateKey | b<bloco> | materia | topico
+// Se divergir em um unico campo, o app procura uma chave que nao
+// existe e mostra "aula nao disponivel" com o cache cheio.
+// ---------------------------------------------------------------
+type EntradaCache = {
+  lesson: unknown;
+  lessonId: string | null;
+  quiz?: unknown;
+  quizId?: string | null;
+  model?: string | null;
+  updatedAt: number;
+};
+
+/** O id do plano de uma aula, a partir da chave de cache. */
+function aulaIdDe(planejadas: { chave: string; id: string }[], chave: string): string | null {
+  return planejadas.find((a) => a.chave === chave)?.id ?? null;
 }
 
-const LESSONS = "generated_lessons";
-
-type LinhaAula = { cache_key: string; lesson_data: unknown };
-
-/** Le as aulas do usuario nas chaves pedidas (PostgREST: cache_key=in.(...)). */
-async function lerCache(userId: string, chaves: string[]): Promise<Record<string, LinhaAula>> {
-  if (!chaves.length) return {};
-  const filtro = chaves.map((c) => `"${c}"`).join(',');
-  const linhas = await postgrest<LinhaAula[]>(
-    `${LESSONS}?select=cache_key,lesson_data&user_id=eq.${userId}&cache_key=in.(${filtro})`,
-  );
-  const mapa: Record<string, LinhaAula> = {};
-  for (const linha of linhas ?? []) mapa[linha.cache_key] = linha;
-  return mapa;
+/** Le o aiCache da linha compartilhada. */
+async function lerCacheCompartilhado(): Promise<Record<string, EntradaCache>> {
+  const linhas = await postgrest<{ data: unknown }[]>("app_state?select=data&id=eq.principal&limit=1");
+  const bruto = (linhas?.[0]?.data ?? {}) as { sections?: { aiCache?: Record<string, EntradaCache> } };
+  return bruto?.sections?.aiCache ?? {};
 }
 
 /**
- * Grava a aula.
+ * Grava a aula no aiCache.
  *
- * `on_conflict=user_id,cache_key` casa com o indice unico real da
- * tabela. E o que torna a gravacao ATOMICA contra execucoes
- * concorrentes: se duas rodarem juntas e chegarem ao mesmo save, uma
- * faz upsert e a outra atualiza a MESMA linha. Nao nasce duplicata,
- * que era o risco da checagem "ler de novo antes de gravar".
+ * Concorrencia: o `aiCache` e um objeto JSON dentro de uma coluna, e
+ * nao uma tabela com indice unico. Um `PATCH` cego sobrescreveria o
+ * objeto inteiro e perderia o que a Anna gerou no celular. Por isso o
+ * read-modify-write acontece AQUI, com a linha relida antes de
+ * gravar: se o cache ja tem a aula valida (a Anna abriu e gerou
+ * enquanto o job rodava), o job nao sobrescreve nada.
  */
-async function salvarCache(userId: string, chave: string, entrada: { dados: unknown; modelo: string | null; criadoEm: string }) {
-  await postgrest(LESSONS, {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+async function salvarCacheCompartilhado(
+  chave: string,
+  entrada: EntradaCache,
+  jaExistentes: Record<string, EntradaCache>,
+): Promise<void> {
+  const linhas = await postgrest<{ data: unknown }[]>("app_state?select=data&id=eq.principal&limit=1");
+  const data = ((linhas?.[0]?.data ?? {}) as { sections?: Record<string, unknown>; meta?: Record<string, unknown> });
+
+  const secoes = (data.sections ?? {}) as Record<string, unknown>;
+  const cacheAtual = (secoes.aiCache ?? {}) as Record<string, EntradaCache>;
+
+  // Releitura: se a aula ja foi gerada por alguem entre a checagem e
+  // agora, respeita. O job nao e dono da aula dela.
+  const existente = cacheAtual[chave];
+  if (existente?.lesson && !jaExistentes[chave]) return;
+
+  await postgrest("app_state?id=eq.principal", {
+    method: "PATCH",
     body: JSON.stringify({
-      user_id: userId,
-      cache_key: chave,
-      curriculum_version: CURRICULUM_VERSION,
-      kind: "curriculum",
-      subject: (entrada.dados as { subject?: string })?.subject ?? "Matematica",
-      topic: (entrada.dados as { topic?: string })?.topic ?? "",
-      lesson_data: entrada.dados,
-      model: entrada.modelo,
+      data: {
+        ...data,
+        sections: { ...secoes, aiCache: { ...cacheAtual, [chave]: entrada } },
+      },
+      updated_at: new Date().toISOString(),
     }),
   });
 }
@@ -339,7 +401,7 @@ async function gerarAula(aula: AulaPlanejada, dateKey: string) {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
 
-  if (!autorizado(req)) {
+  if (!(await autorizado(req))) {
     log("negado", { motivo: 'sem CRON_SECRET valido' });
     return responder(req, 401, { error: 'nao_autorizado' });
   }
@@ -354,17 +416,11 @@ Deno.serve(async (req: Request) => {
   const dateKey = dateKeyInZone(new Date());
 
   try {
-    const dono = await donoDoEstado();
-    if (!dono) {
-      // app_state ainda sem dono: nao existe conta para quem preparar.
-      // Sair assim e o comportamento certo -- gerar para uma conta
-      // presumida deixaria a aula orphan no cache.
-      log("sem_dono", { dateKey, situacao: 'app_state sem owner_id' });
-      return responder(req, 200, {
-        ok: true, dateKey, situacao: 'sem_dono',
-        mensagem: 'app_state ainda nao tem dono; nenhuma aula foi gerada',
-      });
-    }
+    // Sem `owner_id`: no modelo de senha unica nao existe conta, e o cache
+    // de aulas e a propria linha compartilhada do app_state. O job le e
+    // escreve la -- exatamente onde o app le -- entao a aula pre-gerada
+    // aparece na tela sem nenhuma chamada extra e sem conta.
+    const cache = await lerCacheCompartilhado();
 
     const planejadas = (aulasDoDia(dateKey) as AulaPlanejada[]).map((aula) => ({
       ...aula,
@@ -392,9 +448,20 @@ Deno.serve(async (req: Request) => {
     const relatorio = await executarJob({
       dateKey,
       aulas: planejadas,
-      lerCache: async (chave) => (await lerCache(dono, [chave]))[chave] ?? null,
+      // O `cache` foi lido UMA vez no inicio: e a foto do que ja
+      // existia. O job decide a lista de chamadas a partir dessa foto,
+      // e a releitura dentro de salvarCacheCompartilhado() protege o
+      // dado novo da aluna.
+      lerCache: async (chave) => cache[chave] ?? null,
       gerar: (aula) => gerarAula(aula as AulaPlanejada, dateKey),
-      salvar: (chave, entrada) => salvarCache(dono, chave, entrada),
+      salvar: async (chave, entrada) => {
+        await salvarCacheCompartilhado(chave, {
+          lesson: entrada.dados,
+          lessonId: aulaIdDe(planejadas, chave),
+          model: entrada.modelo,
+          updatedAt: Date.now(),
+        }, cache);
+      },
     });
 
     log('fim', {
