@@ -55,23 +55,25 @@ const COLISOES = [
 ];
 
 /**
- * 3. TEXTO CORTADO — o modelo acaba no meio da frase.
+ * 3. TEXTO CORTADO — REGRA REMOVIDA.
  *
- * LIMITACAO DECLARADA: o caso medido em producao foi "...naquela
- * molecula espec." — palavra truncada MAS com ponto final. Isso
- * nao e detectavel com seguranca sem dicionario: "espec", "logic",
- * "music" e "public" sao todos iguais para uma regra sem lexicon, e
- * uma heuristica que tentasse differentiate rejeitaria palavra
- * legitima. Conforme a regra da FASE C ("nao invente regra fragil"),
- * esse caso NAO e coberto e fica registrado como limitacao.
+ * A ideia era: texto que nao termina com pontuacao foi cortado no
+ * meio. O benchmark da FASE C matou a regra com um contraexemplo
+ * real: numa aula de matematica CORRETA, 5 solucoes terminavam em
+ *     "... = 4.\nResposta: 4"
+ * O padrao "Resposta: X" no fim da solucao e normal e nao leva
+ * ponto. A regra reprovou 5 de 6 solucoes de uma aula boa que nao
+ * tinha nenhum erro de matematica.
  *
- * O que fica coberto e o sinal inequivoco do mesmo defeito: texto
- * que termina SEM pontuacao final nenhuma, ou seja, a geracao
- * realmente parou no meio. A ultima palavra ainda e conferida: uma
- * cauda consoantica longa e rara em portugues reforça o diagnostico.
+ * A regra tambem nao pegaria os dois casos reais de truncamento
+ * achados antes, porque sao curtos demais para se distinguir de uma
+ * solucao legitima pelo tamanho.
+ *
+ * Conclusao: nao existe sinal confiavel de "cortado" sem dicionario.
+ * Conforme a regra da FASE C de nao inventar heuristica fragil, ela
+ * saiu. O que cobre esse defeito e a REGRA 5d do prompt, que pede
+ * fechamento das frases antes de devolver o JSON.
  */
-const TERMINO_SEM_PONTUACAO = /[.!?:;"')\]]\s*$/;
-const CAUDA_CONSONANTICA = /[bcdfghjklmnpqrstvwxyzç]{3,}$/i;
 
 /**
  * 4. PONTUACAO QUEBRADA — "feita??", "valor!!!", "sim...".
@@ -115,13 +117,7 @@ export function detectarCorrupcao(texto, opcoes = {}) {
     }
   }
 
-  // (3) texto cortado no meio: nao ha pontuacao final nenhuma. E o
-  // sinal mais direto de que a geracao parou antes da hora. So se
-  // aplica a campos que DEVEM ser paragrafo fechado.
-  if (exigirFimDeFrase && !TERMINO_SEM_PONTUACAO.test(s)) {
-    const ultima = (s.trim().split(/\s+/).pop() ?? "");
-    return `texto cortado no fim (sem pontuacao de fechamento): "${ultima}"`;
-  }
+  // (3) nao existe mais: ver o comentario da regra 3 no topo do arquivo.
 
   // (4) pontuacao quebrada
   const pont = s.match(PONTUACAO_QUEBRADA);

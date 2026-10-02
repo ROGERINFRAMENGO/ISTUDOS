@@ -83,10 +83,12 @@ texto('Nas provas da Etec, pedem para relacionar as cargas eletricas deas que ap
   true, '[DEVE PEGAR] deas (real da FASE B)');
 texto('A pergunta de quantos elementos quimicos ela e feita?? e o tipo de enunciado mais comum na prova.',
   true, '[DEVE PEGAR] feita?? (real da FASE B)');
-texto('Para reconhecer moleculas, procure formulas como H2O, CO2 ou CH4 onde os indices indicam quantos atomos existem em cada',
-  true, '[DEVE PEGAR] texto cortado no meio (sem pontuacao)');
 texto('A molecula surge porque os atomos buscam estabilidade compartilhando AddedAddedAddedAddedAddedAddedAddedAdded',
   true, '[DEVE PEGAR] repeticao adjacente real');
+
+console.log('\n   o padrao "Resposta: X" e legitimo (contraexemplo real do benchmark):');
+texto('Primeiro, reconheca que 7 + (-3) = 7 - 3 = 4.\nResposta: 4', false, '[NAO PEGAR] solucao terminando em Resposta: 4');
+texto('Primeiro, some os algarismos de 84: 8 + 4 = 12. Como 12 / 3 = 4, 84 e divisivel por 3.\nResposta: sim', false, '[NAO PEGAR] solucao terminando em Resposta: sim');
 
 console.log('\n   nao pode barrar texto bom:');
 texto('O atomo e a unidade fundamental da materia, e sua estrutura define as propriedades de cada material.',
