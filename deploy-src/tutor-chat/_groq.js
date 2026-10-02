@@ -25,7 +25,7 @@ import {
   TUTOR_REASONING_DEFAULT,
   TUTOR_TEMPERATURE,
   TUTOR_TIMEOUT_MS,
-} from "./ai_config.js";
+} from "./_ai_config.js";
 
 export { GROQ_BASE_URL, TUTOR_MODELS };
 
@@ -318,6 +318,7 @@ export async function streamText(apiKey, options, { onChunk } = {}) {
       /* ja fechado */
     }
   }
+}
 
 /**
  * Ponto de entrada do Tutor: tenta os modelos em ordem, com retry so em
@@ -382,5 +383,4 @@ export async function complete(apiKey, options, { onChunk, log } = {}) {
     status: 502,
     detail: tentados.join(" | ").slice(0, 400),
   });
-}
 }

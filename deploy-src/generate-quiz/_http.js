@@ -44,7 +44,11 @@ export function corsHeaders(req) {
   return {
     "Access-Control-Allow-Origin": echo,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    // FASE D: a biblioteca de aulas personalizadas usa GET para listar
+    // e DELETE para excluir. Sem os dois aqui, o navegador barra as
+    // requisicoes ja no preflight (net::ERR_FAILED) e a exclusao nunca
+    // sai do aparelho. POST segue como estava.
+    "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
     "Access-Control-Max-Age": "86400",
   };
 }
