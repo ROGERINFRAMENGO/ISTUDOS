@@ -149,18 +149,45 @@ secao('Teste 6/7 — rodar varias vezes nao duplica');
   ok(new Set(c.salvas.map((s) => s.chave)).size === 2, 'cada chave salva uma vez so');
 }
 // ---------------------------------------------------------------- 8
-secao('Teste 8 — cache em versao antiga');
+// Cache de outra VERSAO e o schema real.
+//
+// A tabela nao tem coluna `versao`: a versao do conteudo e um
+// SEGMENTO da cache_key. Entao "versao antiga" nao e uma linha
+// invalida, e uma chave diferente -- o job nem chega a ler a linha
+// velha, porque procura pela chave nova.
+//
+// E por isso que o teste importa tanto: se a chave parasse de
+// carregar a versao, a aula antiga voltaria a valer, a aluna leria
+// o texto que o prompt novo ja trocou, e ninguem perceberia.
+secao('Teste 8 — versao do conteudo mora na chave');
 {
+  const chaveNova = chaveCache(AULA_A);
+  const chaveAntiga = chaveCache({ ...AULA_A, versao: 'p0-antigo' });
+
+  ok(chaveAntiga !== chaveNova, 'versao diferente produz chave diferente');
+  ok(chaveNova.includes(VERSAO_CONTEUDO), `a chave atual carrega a versao (${chaveNova})`);
+
+  // Entrada gravada com a versao nova e content = cache valido.
+  ok(cacheValido({ cache_key: chaveNova, lesson_data: { sections: [{ title: 'atual' }] } }),
+    'entrada no schema real (cache_key + lesson_data) e valida');
+
+  // Linha sem conteudo e invalida: e a aula falsa que nao pode existir.
+  ok(!cacheValido({ cache_key: chaveNova, lesson_data: null }), 'lesson_data nulo NAO e valido');
+  ok(!cacheValido({ cache_key: chaveNova, lesson_data: { sections: [] } }), 'sections vazio NAO e valido');
+  ok(!cacheValido(null), 'linha inexistente NAO e valida');
+
+  // O job procura so pela chave nova: a linha velha fica no banco,
+  // intacta, e nao e lida.
   const c = cenario({
     cache: {
-      [chaveCache(AULA_A)]: { versao: 'p0-antigo', dados: { sections: [{ title: 'velho' }] } },
-      [chaveCache(AULA_B)]: { versao: 'p0-antigo', dados: { sections: [{ title: 'velho' }] } },
+      [chaveAntiga]: { cache_key: chaveAntiga, lesson_data: { sections: [{ title: 'velho' }] } },
     },
   });
-  ok(!cacheValido(c.estado[chaveCache(AULA_A)]), 'entrada de versao antiga NAO e valida');
+  ok(!cacheValido(c.estado[chaveNova]), 'a linha da versao antiga nao satisfaz a chave nova');
   const r = await rodar(c, [AULA_A, AULA_B]);
-  ok(r.geradas.length === 2, 'regenera as 2 pela versao atual', `geradas=${r.geradas.length}`);
-  ok(c.salvas.every((s) => s.versao === VERSAO_CONTEUDO), 'salva na versao atual');
+  ok(r.geradas === 2 || r.geradas.length === 2, 'regenera pela versao atual', `geradas=${JSON.stringify(r.geradas)}`);
+  ok(c.salvas.every((s) => s.chave.includes(VERSAO_CONTEUDO)), 'salva na versao atual');
+  ok(c.salvas.every((s) => s.chave !== chaveAntiga), 'nao sobrescreve a linha antiga');
 }
 
 // ---------------------------------------------------------------- 9

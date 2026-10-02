@@ -27,34 +27,13 @@
 // ./curriculum e ./schedule: ele tem que rodar nos dois ambientes.
 // ============================================================
 
-// A extensao `.js` e explicita de proposito: o mesmo arquivo roda no
-// Vite (que aceitaria os dois jeitos) e na Edge Function em Deno (que
-// exige extensao). Sem ela o Node nao resolve o import.
+// O timezone mora no artefato `planoDias.js`, e nao aqui, porque a
+// Edge Function precisa dele e a Edge Function nao alcanca src/.
+// Reexportar (e nao reimplementar) e o que garante que o cron e o app
+// concordem na virada do dia. O tools/verificar-plano-dias.mjs confere.
+export { TIMEZONE_CRONOGRAMA, dateKeyInZone } from '../../supabase/functions/pregenerate-daily/_shared/planoDias.js';
+
 import { getPlanDaysForDate, isGeneratedDay, CURRICULUM_VERSION } from './curriculum.js';
-
-/** Fuso do cronograma. O produto inteiro presume horario de Sao Paulo. */
-export const TIMEZONE_CRONOGRAMA = 'America/Sao_Paulo';
-
-/**
- * Chave YYYY-MM-DD de um instante, no fuso indicado.
- *
- * Nao usa `toISOString()`: isso converte para UTC e adiantaria o dia
- * em quem esta a leste de Greenwich. Sao Paulo esta a UTC-3, entao
- * 23:30 de um dia vira 02:30 do dia seguinte em UTC — o dia errado,
- * e o cron geraria a aula do dia seguinte cedo.
- */
-export function dateKeyInZone(date = new Date(), timeZone = TIMEZONE_CRONOGRAMA) {
-  // en-CA entrega YYYY-MM-DD, que e o formato que o cronograma usa.
-  const partes = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-
-  const pega = (tipo) => partes.find((p) => p.type === tipo)?.value ?? '';
-  return `${pega('year')}-${pega('month')}-${pega('day')}`;
-}
 
 /**
  * Os dois blocos de aula do dia, NA ordem do cronograma.

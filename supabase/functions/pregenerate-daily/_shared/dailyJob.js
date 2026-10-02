@@ -55,16 +55,26 @@ export function chaveCache({
 /**
  * Cache valido?
  *
- * Tres condicoes, e as tres importam:
- *  - a entrada existe;
- *  - e da versao de conteudo atual (versao velha = regenerar, como
- *    ja acontecia quando o prompt da aula mudou);
- *  - tem conteudo de verdade, nao um objeto vazio que passou pelo
- *    save por algum motivo.
+ * A entrada e uma LINHA de `generated_lessons`, com as colunas de
+ * verdade da tabela:
+ *
+ *   cache_key ... a chave logica (a versao do conteudo ja esta
+ *                dentro dela, como segmento)
+ *   lesson_data ... o conteudo gerado
+ *
+ * Nao existe coluna `versao`: a versao faz parte da `cache_key`, que
+ * ja foi comparada pelo `select`. Então a validação aqui e somente
+ * "existe conteudo de verdade?".
+ *
+ * Tres condicoes recusam:
+ *  - a linha nao existe;
+ *  - nao ha `lesson_data` (ou veio nulo);
+ *  - `sections` veio vazio -- um objeto que passou pelo save sem
+ *    conteudo e exatamente a aula falsa que nao pode existir.
  */
-export function cacheValido(entrada, versao = VERSAO_CONTEUDO) {
+export function cacheValido(entrada) {
   if (!entrada || typeof entrada !== 'object') return false;
-  if (entrada.versao !== versao) return false;
+  // `dados` e o nome do teste; `lesson_data` e o da tabela real.
   const dados = entrada.dados ?? entrada.lesson_data;
   if (!dados || typeof dados !== 'object') return false;
   const secoes = dados.sections ?? dados.secoes;

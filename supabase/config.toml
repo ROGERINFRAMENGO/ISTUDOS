@@ -7,3 +7,11 @@ verify_jwt = false
 # O modelo (meta/muse-glimmer-30b) leva mais de 150s para escrever a aula
 # inteira, e o padrao do gateway estourava com 504 IDLE_TIMEOUT.
 
+[functions.pregenerate-daily]
+# verify_jwt desligado NAO deixa a funcao aberta: quem chama e o pg_cron,
+# que manda o CRON_SECRET no cabecalho Authorization e nao um JWT de
+# aluna. A propria funcao compara o segredo (tempo constante) e devolve
+# 401 para quem nao tem. Sem essa checagem no codigo, desligar o
+# verify_jwt seria abrir o endpoint para qualquer um.
+verify_jwt = false
+
