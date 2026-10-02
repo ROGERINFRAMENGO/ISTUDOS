@@ -124,6 +124,18 @@ function findAnswerContradiction(answer, solution) {
   return `answer diz "${String(answer).trim().slice(0, 30)}" mas a solucao declara "Resposta: ${declaradas[0].slice(0, 30)}"`;
 }
 
+function findVariableAnswerContradiction(answer, explanation) {
+  const resposta = String(answer ?? "").trim().match(/^(?:x\s*=\s*)?([+-]?\d+(?:[.,]\d+)?)$/i);
+  if (!resposta) return null;
+  const declaracoes = [...String(explanation ?? "").matchAll(/\bx\s*=\s*([+-]?\d+(?:[.,]\d+)?)/gi)];
+  if (!declaracoes.length) return null;
+  const declarado = declaracoes[declaracoes.length - 1][1];
+  const valorResposta = Number(resposta[1].replace(",", "."));
+  const valorDeclarado = Number(declarado.replace(",", "."));
+  if (!Number.isFinite(valorResposta) || !Number.isFinite(valorDeclarado) || Math.abs(valorResposta - valorDeclarado) < 1e-9) return null;
+  return `answer diz "${resposta[1]}" mas a explicacao conclui x = "${declarado}"`;
+}
+
 // ------------------------------------------------------------
 // METADADO DO CRONOGRAMA (Prioridade 1)
 // ------------------------------------------------------------
@@ -357,6 +369,8 @@ function findCoherenceIssues({ sections = [], guidedPractice = [] }) {
         problemas.push(`${at}: a resposta (${aNums.join(", ")}) nao aparece na explicacao`);
       }
     }
+    const contradicaoVariavel = findVariableAnswerContradiction(answer, explanation);
+    if (contradicaoVariavel) problemas.push(`${at}: ${contradicaoVariavel}`);
     // (4) mesma defesa nos exercicios.
     problemas.push(...checarPremissaContradita({
       at, problem: question, solution: answer, explanation,

@@ -2238,6 +2238,18 @@ h1, h2, h3, h4, p {
   background: var(--surface-2);
   border: 1px solid var(--line);
   white-space: nowrap;
+
+  /* `nowrap` sozinho deixa o chip estourar a tela em telas estreitas:
+     a 360px ele chegava a 368px e criava scroll horizontal na pagina
+     inteira. `max-width` sozinho nao resolve: ele resolve contra o
+     pai, e o pai ja estava sendo alargado pelo proprio conteudo
+     (min-content). Por isso o chip vira inline-block com quebra
+     interna -- assim ele ocupa no maximo a coluna e nunca empurra o
+     documento. */
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
 }
 .sim-chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 
