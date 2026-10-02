@@ -125,8 +125,16 @@ for (const [i, licao] of fila.entries()) {
 
   fs.writeFileSync(ARQ_PROGRESSO, JSON.stringify(progresso, null, 2), 'utf8');
 
-  if (falhasSeguidas >= 5) {
-    console.log('\n  5 falhas seguidas: parando para nao estourar cota.');
+  // 12, e nao 5. A taxa de acerto medida da NVIDIA e de ~20%: ela
+  // responde em 6-9s quando funciona e trava ate o timeout quando
+  // nao funciona. Com limiar 5, cinco aulas ruins seguidas encerram
+  // o lote antes de qualquer progresso — e era exatamente o que
+  // acontecia na primeira execucao (2 de 122).
+  //
+  // 12 continua sendo uma protecao real contra queda total do
+  // provider: com 12 falhas o provider esta fora, nao instavel.
+  if (falhasSeguidas >= 12) {
+    console.log('\n  12 falhas seguidas: parando para nao estourar cota.');
     console.log('  O progresso esta salvo; rode de novo depois.');
     break;
   }
