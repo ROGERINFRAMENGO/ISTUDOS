@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import TutorChat, { LESSON_SUGGESTIONS } from './TutorChat';
+// Filtro unico de imagem/video: descarta marcador de edicao
+// (COLE_AQUI_...), URL que nao e http(s) e o que nao parece imagem.
+// Ver o raciocinio em src/data/lessonImages.js.
+import { imagensReais, urlReal } from '../data/lessonImages';
 
 export const STUDY_CONFIRM_TEXT = '';
 
@@ -243,15 +247,20 @@ function StudyContent(props) {
     );
   }
 
-  // Aula do cronograma gerada pela IA tem layout proprio (sem video obrigatorio).
+  // Só imagens de verdade chegam na tela. Sem imagem real, nenhum
+  // <figure> é renderizado: a aula fica textual, sem imagem quebrada
+  // nem legenda sobre algo que não existe.
+  const imagens = imagensReais(detail?.images);
+
+  // Aula do cronograma gerada pela IA tem layout próprio (sem video obrigatorio).
   if (detail?.generated) return <GeneratedStudy {...props} />;
   return (
     <>
       <section className="panel lesson-hero">
-        {lesson.videoUrl ? (
+        {urlReal(lesson.videoUrl) ? (
           <div className="study-video-wrap lesson-video">
             <iframe
-              src={lesson.videoUrl}
+              src={urlReal(lesson.videoUrl)}
               title={lesson.topic}
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -272,10 +281,10 @@ function StudyContent(props) {
 
       <section className="panel lesson-content">
         <h3>Aula completa e detalhada</h3>
-        {detail?.images?.[0] && (
+        {imagens[0] && (
           <figure className="lesson-figure">
-            <img src={detail.images[0].src} alt={detail.images[0].caption} loading="lazy" />
-            <figcaption>{detail.images[0].caption}</figcaption>
+            <img src={imagens[0].src} alt={imagens[0].caption} loading="lazy" />
+            <figcaption>{imagens[0].caption}</figcaption>
           </figure>
         )}
         {(detail?.sections || []).slice(0, 3).map((section, sectionIndex) => (
@@ -291,10 +300,10 @@ function StudyContent(props) {
             </ul>
           </article>
         ))}
-        {detail?.images?.[1] && (
+        {imagens[1] && (
           <figure className="lesson-figure">
-            <img src={detail.images[1].src} alt={detail.images[1].caption} loading="lazy" />
-            <figcaption>{detail.images[1].caption}</figcaption>
+            <img src={imagens[1].src} alt={imagens[1].caption} loading="lazy" />
+            <figcaption>{imagens[1].caption}</figcaption>
           </figure>
         )}
         {(detail?.sections || []).slice(3).map((section, sectionIndex) => (
@@ -310,10 +319,10 @@ function StudyContent(props) {
             </ul>
           </article>
         ))}
-        {detail?.images?.[2] && (
+        {imagens[2] && (
           <figure className="lesson-figure">
-            <img src={detail.images[2].src} alt={detail.images[2].caption} loading="lazy" />
-            <figcaption>{detail.images[2].caption}</figcaption>
+            <img src={imagens[2].src} alt={imagens[2].caption} loading="lazy" />
+            <figcaption>{imagens[2].caption}</figcaption>
           </figure>
         )}
       </section>
