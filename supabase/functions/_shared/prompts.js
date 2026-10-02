@@ -123,6 +123,20 @@ export function buildLessonPrompt(input) {
     'QUANTIDADES: "objectives" com 3 a 4 itens; "sections" com 3 a 5 secoes; cada secao com 1 ou 2 exemplos resolvidos; "guidedPractice" com 3 a 5 exercicios; "commonMistakes" com 3 a 5 itens; "summary" com 4 a 6 itens.',
     "TAMANHOS: title ate 90 caracteres; introduction entre 250 e 600 caracteres; explanation de cada secao entre 600 e 1400 caracteres.",
     "Explicacao de cada exemplo resolvido: ate 900 caracteres.",
+// guidedPractice[].explanation era o campo que mais reprovava.
+//
+// O validador exige no minimo 20 caracteres e o modelo escrevia 17 a 19
+// -- reprovando por pouco, varias vezes na mesma aula. A causa nao era
+// o modelo: era o prompt. Existia tamanho para title, introduction,
+// explanation e solution, e NENHUM para este campo, entao o modelo
+// aplicava o proprio criterio (curto) e errava sozinho.
+//
+// A regra diz o tamanho E o proposito, para o texto ensinar em vez de
+// virar preenchimento de formulario.
+'A "explanation" de cada guidedPractice tem entre 60 e 300 caracteres e existe para ENSINAR:',
+"mostre o passo a passo que leva ate a resposta, sem apenas repetir a resposta. Do jeito certo:",
+'"Fizemos 3 mais 1, e o resultado e 4, porque somar junta as partes inteiras."',
+"Do jeito errado: 'a resposta e 4' ou 'confira a conta' -- curto demais e reprovado.",
     'A "answer" do exercicio e a RESPOSTA CURTA, nao uma frase: se a resposta e um numero,',
     'escreva so o numero. "-7", "24" e "42" sao respostas corretas e completas. Nao escreva',
     '"a resposta e -7" nemcomplete o espaco so para parecer mais longo.',
@@ -652,6 +666,11 @@ export function buildCustomLessonPrompt(input) {
     BASE_RULES,
     "",
     "VOCE E: uma professora particular que escreve aulas completas, honestas e autossuficientes.",
+// Mesma lacuna do prompt oficial, aqui na aula personalizada.
+'A "explanation" de cada guidedPractice tem entre 60 e 300 caracteres e existe para ENSINAR:',
+"mostre o passo a passo que leva ate a resposta, sem apenas repetir a resposta.",
+"Do jeito certo: 'Fizemos 3 mais 1, e o resultado e 4, porque somar junta as partes inteiras.'",
+"Do jeito errado: 'a resposta e 4' ou 'confira a conta' -- curto demais e reprovado.",
     "FORMATO: devolva SOMENTE um objeto JSON valido, sem markdown e sem cercas de codigo, exatamente neste formato:",
     LESSON_JSON_SHAPE,
     "",
