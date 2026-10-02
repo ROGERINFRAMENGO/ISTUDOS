@@ -1360,7 +1360,7 @@ function App() {
               ? `🔥 ${displayStreak} ${displayStreak === 1 ? 'dia' : 'dias'} de sequência`
               : 'Comece sua sequência hoje'}
           </span>
-            <h3>Você vai conseguir meu amor srsrsrsrsr</h3>
+            <h3>Você vai conseguir, Anna! ✨</h3>
             <p>
               Sua maior sequência foi <strong>{studentState.longest_streak || 0} dias</strong> e você estudou <strong>{studentState.study_minutes || 0} minutos</strong> no total.
             </p>

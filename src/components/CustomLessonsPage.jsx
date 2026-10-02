@@ -60,7 +60,8 @@ export default function CustomLessonsPage({ onOpenLesson, onBack }) {
 
   const tamanho = request.trim().length;
   const estourou = tamanho > CUSTOM_REQUEST_MAX;
-  const podeGerar = !loading && !estourou && tamanho >= 10;
+  const MINIMO_PROPOSTA = 3;
+  const podeGerar = !loading && !estourou && tamanho >= MINIMO_PROPOSTA;
 
   async function gerar(event) {
     event.preventDefault();
@@ -68,7 +69,7 @@ export default function CustomLessonsPage({ onOpenLesson, onBack }) {
     // duas geracoes e gastam cota duas vezes.
     if (loading) return;
     if (estourou) { setError(`Seu pedido tem ${tamanho} caracteres e o limite e ${CUSTOM_REQUEST_MAX}.`); return; }
-    if (tamanho < 10) { setError('Escreva um pouco mais sobre o que quer aprender.'); return; }
+    if (tamanho < MINIMO_PROPOSTA) { setError('Escreva pelo menos 3 caracteres para descrever o tema.'); return; }
 
     setError('');
     setLoading(true);
