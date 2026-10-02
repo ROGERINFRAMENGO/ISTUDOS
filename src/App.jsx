@@ -1168,6 +1168,18 @@ function App() {
   const lessonHits = quizResults ? quizResults.filter((item) => item.isCorrect).length : 0;
   const showLessonPage = (currentStudyLesson || isCustomLessonOpen) && lessonView !== 'home' && lessonFlow !== 'list';
 
+  // Existe uma aula REAL para mostrar?
+  //
+  // `aiLesson` e o que a tela esta mostrando. O cache local e a
+  // segunda fonte: a aula pode ter sido gerada antes e estar no
+  // dispositivo sem estar em `aiLesson` ainda (por exemplo, ao voltar
+  // do quiz).
+  //
+  // Exigir `sections` com conteudo e o que segura a mensagem de erro:
+  // sem essa checagem, o app diria "sua aula anterior continua salva"
+  // para uma entrada que nao tem aula nenhuma -- o que o requisito proibe.
+  const cachedStudyLesson = getCachedLesson(openPlan ?? generatedStudyLesson) ?? aiLesson;
+
   // Texto do indicador de sincronização (usado na lateral e no topo).
   const syncBadgeText =
     syncStatus === 'syncing'
@@ -1194,7 +1206,18 @@ function App() {
         aiError={aiError}
         onRetryLesson={() => setAiNonce((n) => n + 1)}
         isRetrying={Boolean(aiStatus)}
-        temAulaAnterior={Boolean(cachedStudyLesson)}
+        // A tela rosa nascia AQUI: `cachedStudyLesson` nao existia em
+        // lugar nenhum do arquivo. Um ReferenceError dentro do render
+        // derruba a arvore inteira do React -- o #root fica com 0 filhos
+        // e aparece so o fundo. Nao era problema de aula, era um
+        // nome quebrado.
+        //
+        // `aiLesson` e a aula carregada/gerada de verdade. O
+        // `getCachedLesson` abaixo confirma pelo MESMO cache que o app
+        // usa, e ainda exige `sections` com conteudo -- porque "existe
+        // uma entrada" e "a aluna tem uma aula valida" sao coisas
+        // diferentes, e a mensagem de erro depende da segunda.
+        temAulaAnterior={Boolean(cachedStudyLesson?.lesson?.sections?.length)}
         aiNonce={aiNonce}
         lessonSeconds={lessonSeconds}
         canShowQuiz={canShowQuiz}
