@@ -8,7 +8,7 @@
 // A IA nunca escolhe o que estudar: ela recebe isto pronto.
 // ============================================================
 
-import { DAILY_PLAN, getWeekNumberByDate, scheduleWeeks } from './schedule';
+import { DAILY_PLAN, getWeekNumberByDate, scheduleWeeks } from './schedule.js';
 
 // v2: o cronograma mestre passou a ter 2 blocos por dia (55min + 10min
 // + 55min). A versão entra na chave do cache, então as aulas geradas

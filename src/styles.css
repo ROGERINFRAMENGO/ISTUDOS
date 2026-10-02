@@ -1809,32 +1809,6 @@ h1, h2, h3, h4, p {
   }
 }
 
-/* ---------- Diagnostico do Tutor (temporario) ---------- */
-.chat-diag-bar { display: flex; justify-content: flex-end; padding: 4px 10px; }
-.chat-diag-status {
-  margin: 6px 10px; padding: 6px 10px; border-radius: 10px;
-  background: #fff4d6; color: #7a5b00; font-size: 13px;
-}
-.chat-diag {
-  margin: 8px 10px; padding: 10px; border-radius: 12px;
-  background: #1f2937; color: #e5e7eb; font-size: 12px;
-}
-.chat-diag-title { margin: 0 0 6px; font-weight: 700; color: #fbbf24; }
-.chat-diag-msgs { margin: 0 0 8px; }
-.chat-diag-log {
-  margin: 0 0 8px; padding: 8px; max-height: 190px; overflow: auto;
-  background: #111827; border-radius: 8px; white-space: pre-wrap;
-  word-break: break-all; font-size: 11px; line-height: 1.5;
-}
-.chat-diag-acoes { display: flex; gap: 6px; }
-.chat-diag-dica { margin: 8px 0 0; opacity: 0.75; font-size: 11px; }
-
-.chat-diag-estado {
-  margin: 0 0 8px; padding: 8px; max-height: 150px; overflow: auto;
-  background: #0b3d2e; border-radius: 8px; white-space: pre-wrap;
-  word-break: break-all; font-size: 11px; line-height: 1.5; color: #a7f3d0;
-}
-
 /* ============================================================
    FASE D � MINHAS AULAS
    ============================================================
@@ -2460,4 +2434,70 @@ h1, h2, h3, h4, p {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+/* ===================================================================
+   Aula ainda nao disponivel
+
+   Aparece quando nao existe aula valida: a IA nao respondeu, nao ha
+   cache e nao ha texto salvo. Antes disso a tela caia num texto
+   generico com o titulo da aula no topo — o pior resultado possivel,
+   porque a aluna achava que tinha estudado.
+   =================================================================== */
+
+.lesson-indisponivel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-6);
+}
+
+.lesson-indisponivel-titulo {
+  margin: 0;
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  color: var(--text);
+}
+
+.lesson-indisponivel-texto {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.lesson-indisponivel-status {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--brand);
+}
+
+.lesson-indisponivel-nota {
+  margin: 0;
+  max-width: 56ch;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.lesson-indisponivel .hero-actions {
+  margin-top: var(--sp-2);
+  gap: var(--sp-3);
+}
+
+/* Status "aguardando a tutora" / "escrevendo a resposta". Antes
+   reaproveitava .chat-diag-status, que era parte do painel de
+   diagnostico removido. */
+.chat-status {
+  margin: 0 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .lesson-indisponivel { padding: var(--sp-5) var(--sp-4); }
+  .lesson-indisponivel .hero-actions { width: 100%; flex-direction: column; }
+  .lesson-indisponivel .hero-actions button { width: 100%; min-height: 48px; }
 }

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   askTutorStream,
   AI_DISCONNECTED_MESSAGE,
@@ -6,7 +6,7 @@ import {
   isAiConfigured,
 } from '../services/aiChat';
 import { buildSimulado, loadSimulados, parseSimuladoIntent, saveSimulados } from '../services/simulados';
-import { diagTutor, lerDiagTutor, limparDiagTutor } from '../services/ai';
+import { diagTutor } from '../services/ai';
 import { isSyncConfigured, mergeChat, nowIso, pullShared, pushShared } from '../services/sync';
 import { subjects } from '../data/mockData';
 import { DAY_LABELS, formatDateBR, getDateKey, getDayKey } from '../data/lessons';
@@ -177,10 +177,7 @@ export default function TutorChat({
         // texto some AQUI, a causa e a sincronizacao, nao o streaming.
         const aindaTem = merged.some((m) => m.role === 'assistant' && String(m.content || '').trim().length > 0);
         setMessages((prev) => mergeChat(prev, remoteChat));
-        setDiagLinhas((antigas) => [
-          ...antigas.slice(-40),
-          `${new Date().toISOString().slice(11, 19)} 7.sync:volta ${merged.length} msgs | resposta presente: ${aindaTem ? 'SIM' : 'NAO'}`,
-        ]);
+        registrar('7.sync', `${merged.length} msgs | resposta presente: ${aindaTem ? 'SIM' : 'NAO'}`);
       }
     }, 1500);
 
@@ -188,33 +185,22 @@ export default function TutorChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncReady, messages, isThinking]);
 
-  // ---------- Diagnostico do Tutor (remover quando o bug fechar) ----------
-  const [diagAberto, setDiagAberto] = useState(false);
-  const [diagLinhas, setDiagLinhas] = useState(() => lerDiagTutor());
-  const [statusTexto, setStatusTexto] = useState('');
-
-  // Soma 1 a 1 a cada handler e refresca o painel. Sem isso o painel
-  // ficava vazio: o diagTutor() escrevia no localStorage mas o React
-  // nunca re-renderizava para mostrar as linhas novas.
-  // Cada etapa e logada com um prefixo, entao a ordem real da resposta
-  // fica visivel (onStart -> onDelta -> onDone -> sync).
+  // O `registrar` continua: e ele que chama diagTutor(), que escreve o
+  // log no console/localStorage e segue sendo util na depuracao pelo
+  // DevTools. O que saiu foi a PARTE VISIVEL — painel, botao e os
+  // estados que so existiam para redesenhar aquele painel a cada
+  // 600ms. Nada aqui altera modelo, prompt, streaming ou historico.
   const registrar = useCallback((etapa, detalhe = '') => {
     diagTutor(etapa, detalhe);
-    setDiagLinhas(lerDiagTutor());
   }, []);
 
-  // O painel precisa se atualizar SOZINHO. Os logs de dentro do ai.js
-  // (sessao:*, fetch:resposta, reader:ok, evento:*, timeout:*) sao
-  // gravados no localStorage pela funcao diag() e NAO passam por aqui:
-  // so um refresh manual os mostrava. Era por isso que o painel ficava
-  // congelado em "0.envio" e nao dizia onde a resposta tinha parado -
-  // o log completo estava no localStorage, so nao era desenhado.
-  useEffect(() => {
-    if (!diagAberto) return undefined;
-    setDiagLinhas(lerDiagTutor());
-    const intervalo = setInterval(() => setDiagLinhas(lerDiagTutor()), 600);
-    return () => clearInterval(intervalo);
-  }, [diagAberto]);
+  // Texto de "o que a tutora esta fazendo agora". Este estado NAO e do
+  // painel de diagnostico: e o indicador que a estudante ve no chat
+  // enquanto a resposta chega. Foi removido junto com o painel por
+  // engano e derrubou a pagina inteira do Tutor (ReferenceError:
+  // statusTexto is not defined) — o navegador pegou isso antes do
+  // deploy.
+  const [statusTexto, setStatusTexto] = useState('');
 
   // Reflete o status na tela: e o primeiro sinal de que travou.
   useEffect(() => {
@@ -448,9 +434,7 @@ export default function TutorChat({
       setStatus('idle');
       // Confirma o que o estado realmente ficou: e este passo que
       // diz se a bolha entrou na tela (streaming:false, id vivo).
-      setTimeout(() => {
-        setDiagLinhas(lerDiagTutor());
-      }, 0);
+      registrar('8.onDone', `${messages.length} msgs`);
     };
 
     const onError = (error) => {
@@ -554,7 +538,7 @@ export default function TutorChat({
 
       <div className="chat-messages" ref={listRef}>
         {statusTexto && (
-          <p className="chat-diag-status" role="status">
+          <p className="chat-status" role="status">
             {statusTexto}
           </p>
         )}
@@ -604,64 +588,6 @@ export default function TutorChat({
         )}
       </div>
 
-      {diagAberto && (
-        <div className="chat-diag">
-          <p className="chat-diag-title">Diagnostico do Tutor</p>
-          <p className="chat-diag-msgs">
-            Mensagens no estado: <strong>{messages.length}</strong> Ã‚Â· status: <strong>{status}</strong>
-            {conversationId ? ' Ã‚Â· conversa ok' : ' Ã‚Â· SEM conversa'}
-          </p>
-          <pre className="chat-diag-estado">
-            {messages
-              .slice(-4)
-              .map(
-                (m, i) =>
-                  `[${messages.length - 4 + i}] ${m.role} streaming=${m.streaming === true} chars=${String(m.content || '').length} :: ${String(m.content || '').slice(0, 60)}`,
-              )
-              .join('\n') || '(sem mensagens)'}
-          </pre>
-
-          {/* ETAPA 6: o log REAL de cada etapa. Antes estas linhas eram
-              coletadas em diagLinhas e nunca renderizadas - o painel
-              mostrava o estado das mensagens mas nao dizia em que passo
-              a resposta tinha parado. Sem JWT, sem chave, sem token. */}
-          <p className="chat-diag-title">Log das etapas</p>
-          <pre className="chat-diag-estado">
-            {diagLinhas.length
-              ? diagLinhas.slice(-40).join('\n')
-              : '(nenhum log ainda - envie uma mensagem)'}
-          </pre>
-
-          <div className="chat-diag-acoes">
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => setDiagLinhas(lerDiagTutor())}
-            >
-              Atualizar
-            </button>
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => {
-                limparDiagTutor();
-                setDiagLinhas([]);
-              }}
-            >
-              Limpar
-            </button>
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => setDiagAberto(false)}
-            >
-              Fechar
-            </button>
-          </div>
-          <p className="chat-diag-dica">Copie o texto acima e envie. Ele mostra em qual etapa parou.</p>
-        </div>
-      )}
-
       <div className="chat-suggestions">
         {suggestions.map((suggestion) => (
           <button
@@ -676,11 +602,12 @@ export default function TutorChat({
         ))}
       </div>
 
-      <div className="chat-diag-bar">
-        <button type="button" className="ghost-button" onClick={() => { setDiagLinhas(lerDiagTutor()); setDiagAberto((v) => !v); }}>
-          {diagAberto ? 'Fechar diagnostico' : 'Diagnostico'}
-        </button>
-      </div>
+      {/* A barra de diagnostico saiu daqui.
+          O painel de stages do Tutor era ferramenta de depuracao de um
+          bug especifico e nao pertence a interface da estudante. O
+          `diagTutor()` continua existindo em services/ai.js — e ele
+          registra no console e nao atrapalha nada — mas nao ha mais
+          botao, nem painel, nem estado de UI para ele. */}
 
       <form
         className="chat-composer"

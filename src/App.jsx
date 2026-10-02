@@ -1178,6 +1178,9 @@ function App() {
         aiStatus={aiStatus}
         aiError={aiError}
         onRetryLesson={() => setAiNonce((n) => n + 1)}
+        isRetrying={Boolean(aiStatus)}
+        temAulaAnterior={Boolean(cachedStudyLesson)}
+        aiNonce={aiNonce}
         lessonSeconds={lessonSeconds}
         canShowQuiz={canShowQuiz}
         isPreparingQuiz={isPreparingQuiz}

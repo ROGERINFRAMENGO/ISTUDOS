@@ -52,12 +52,16 @@ export default function LessonPage(props) {
         </header>
 
         {props.quizError && <p className="quiz-error">{props.quizError}</p>}
-        {props.aiStatus && (
+
+        {/* A tela de indisponibilidade abaixo ja e a mensagem de erro
+            quando nao ha conteudo: mostrar as duas deixava dois
+            "Tentar novamente" na mesma pagina. */}
+        {props.aiStatus && !aulaVazia(props) && (
           <p className="quiz-error" role="status">
             ⏳ {props.aiStatus}
           </p>
         )}
-        {props.aiError && (
+        {props.aiError && !aulaVazia(props) && (
           <p className="quiz-error">
             {props.aiError}{' '}
             {props.onRetryLesson && (
@@ -152,8 +156,93 @@ function GoToQuizButton({ canShowQuiz, isPreparingQuiz, quizReady, quizError, qu
   );
 }
 
+/**
+ * Nao existe conteudo real para mostrar?
+ *
+ * Vale para aula do cronograma e para a personalizada: as duas passam
+ * por aqui, e nenhuma das duas pode cair em texto generico.
+ */
+function aulaVazia(props) {
+  const { detail } = props;
+  if (detail?.generated) return false;
+  return !detail?.sections?.length;
+}
+
+/**
+ * Aula ainda nao disponivel.
+ *
+ * Regra da mensagem: ela descreve o que e verdade AGORA. A versao
+ * anterior dizia sempre "A IA nao respondeu agora. Sua aula anterior
+ * continua salva." — inclusive quando nao havia aula anterior salva
+ * nenhuma. A aluna era levada a crer que tinha um material em algum
+ * lugar. Aqui so aparece essa frase se existe mesmo uma aula
+ * anterior valida.
+ */
+function AulaIndisponivel({ lesson, aiStatus, temAulaAnterior, onRetryLesson, onBack, isRetrying }) {
+  return (
+    <section className="panel lesson-indisponivel">
+      <p className="tag tag-hot">Aula ainda nao disponivel</p>
+
+      <h2 className="lesson-indisponivel-titulo">{lesson?.topic || lesson?.title || 'Esta aula'}</h2>
+
+      {aiStatus ? (
+        <p className="lesson-indisponivel-status" role="status">
+          ⏳ {aiStatus}
+        </p>
+      ) : (
+        <p className="lesson-indisponivel-texto">
+          {temAulaAnterior
+            ? 'A IA nao respondeu agora. Sua aula anterior continua salva.'
+            : 'A aula ainda nao foi gerada. Tente novamente.'}
+        </p>
+      )}
+
+      {!aiStatus && (
+        <p className="lesson-indisponivel-nota">
+          Nada e inventado aqui: quando a aula nao existe, a tela fica vazia de conteudo
+          em vez de mostrar um texto qualquer com o titulo em cima.
+        </p>
+      )}
+
+      <div className="hero-actions">
+        {onRetryLesson && (
+          <button
+            type="button"
+            className="primary-button"
+            onClick={onRetryLesson}
+            disabled={Boolean(isRetrying || aiStatus)}
+          >
+            {isRetrying || aiStatus ? 'Preparando...' : 'Tentar novamente'}
+          </button>
+        )}
+        {onBack && (
+          <button type="button" className="ghost-button" onClick={onBack}>
+            Voltar ao cronograma
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function StudyContent(props) {
   const { lesson, detail } = props;
+
+  // SEM CONTEUDO REAL: a IA nao respondeu, nao ha cache e nao existe
+  // texto salvo. Antes esta tela caia num "modelo automatico" que
+  // escrevia paragrafos genericos com o titulo da aula em cima — a
+  // aluna lia "Fractions" com um texto que nao era sobre fracao e
+  // achava que tinha estudado. Agora ela ve a verdade e pode tentar
+  // de novo sem sair da pagina.
+  if (!detail?.generated && !(detail?.sections?.length)) {
+    return (
+      <AulaIndisponivel
+        {...props}
+        isRetrying={Boolean(props.aiStatus)}
+      />
+    );
+  }
+
   // Aula do cronograma gerada pela IA tem layout proprio (sem video obrigatorio).
   if (detail?.generated) return <GeneratedStudy {...props} />;
   return (
